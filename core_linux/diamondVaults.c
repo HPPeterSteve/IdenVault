@@ -381,15 +381,21 @@ static VaultError validate_path(const char *path) {
         return ERR_PATH_INVALID;
     if (strlen(path) >= VAULT_PATH_MAX)
         return ERR_PATH_INVALID;
-    /* Reject null bytes embedded in path */
-    if (memchr(path, 0, strlen(path) + 1) != path + strlen(path))
-        return ERR_PATH_INVALID;
-    /* Must be absolute */
+    /* Deve ser absoluto */
     if (path[0] != '/')
         return ERR_PATH_INVALID;
-    /* Reject path traversal */
-    if (strstr(path, "/../") || (strlen(path) >= 3 && strcmp(path + strlen(path) - 3, "/..") == 0))
+    /* Rejeita path traversal */
+    if (strstr(path, "/../") ||
+        (strlen(path) >= 3 && strcmp(path + strlen(path) - 3, "/..") == 0))
         return ERR_PATH_INVALID;
+    /* Rejeita caracteres de controle — null bytes embutidos, tabs, newlines */
+    for (const char *p = path; *p; p++) {
+        if ((unsigned char)*p < 0x20) {
+            vault_log(LOG_ERROR, "validate_path: caractere de controle (0x%02x) no path",
+                      (unsigned char)*p);
+            return ERR_PATH_INVALID;
+        }
+    }
     return ERR_OK;
 }
 
@@ -781,6 +787,7 @@ static void hashmap_clear(FileHashMap *m) {
 #define CATALOG_MAGIC "VLTS"
 #define CATALOG_VER    1
 #define FCOUNT_MAX 1000
+
 static VaultError catalog_save(void) {
     char tmp[512];
     snprintf(tmp, sizeof(tmp), "%s.tmp", VAULT_CATALOG_FILE);
@@ -831,17 +838,16 @@ static VaultError catalog_save(void) {
 
         fwrite(&fcount, sizeof(fcount), 1, fp);
 
-        for (int b = 0; b < HASHMAP_BUCKETS; b++) {
-            for (FileEntry *e = v->hashmap.buckets[b]; e; e = e->next) {
-                fwrite(e->filename, NAME_MAX + 1, 1, fp);
-                fwrite(e->hash,     HASH_HEX_LEN, 1, fp);
-                fwrite(&e->last_seen, sizeof(time_t), 1, fp);
-                uint8_t mod = e->modified ? 1 : 0;
-                fwrite(&mod, 1, 1, fp);
-                write++;
-                if (write >= fcount) break;
-            }
-        }
+        for (int b = 0; b < HASHMAP_BUCKETS && write < fcount; b++) {
+    for (FileEntry *e = v->hashmap.buckets[b]; e && write < fcount; e = e->next) {
+        fwrite(e->filename, NAME_MAX + 1, 1, fp);
+        fwrite(e->hash,     HASH_HEX_LEN, 1, fp);
+        fwrite(&e->last_seen, sizeof(time_t), 1, fp);
+        uint8_t mod = e->modified ? 1 : 0;
+        fwrite(&mod, 1, 1, fp);
+        write++;
+    }
+}
     }
 
     fclose(fp);
@@ -884,10 +890,14 @@ static VaultError catalog_load(void) {
         vault_log(LOG_ERROR, "Unsupported catalog version %d", ver);
         return ERR_IO;
     }
-
-    fread(&g_catalog.count,   4, 1, fp);
-    fread(&g_catalog.next_id, 4, 1, fp);
-    fread(g_catalog.category, 1, 32, fp);
+    #define FREAD_CHECK(dst, sz, fp) \
+    do { if (fread(dst, sz, 1, fp) != 1) { \
+        vault_log(LOG_ERROR, "catalog_load: leitura truncada em %s:%d", __FILE__, __LINE__); \ 
+        fclose(fp); return ERR_IO; } } while(0)
+    
+    FREAD_CHECK(&g_catalog.count,   4, fp);
+    FREAD_CHECK(&g_catalog.next_id, 4, fp);
+    FREAD_CHECK(g_catalog.category, 32, fp);
 
     if (g_catalog.count > MAX_VAULTS) {
         fclose(fp);
@@ -899,48 +909,50 @@ static VaultError catalog_load(void) {
         Vault *v = &g_catalog.vaults[i];
         memset(v, 0, sizeof(Vault));
 
-        fread(&v->id,              sizeof(v->id),              1, fp);
-        fread(v->name,             VAULT_NAME_MAX,             1, fp);
-        fread(&v->type,            sizeof(v->type),            1, fp);
-        fread(&v->status,          sizeof(v->status),          1, fp);
+        FREAD_CHECK(&v->id,              sizeof(v->id),              fp);
+        FREAD_CHECK(v->name,             VAULT_NAME_MAX,             fp);
+        FREAD_CHECK(&v->type,            sizeof(v->type),            fp);
+        FREAD_CHECK(&v->status,          sizeof(v->status),          fp);
         uint8_t hp;
-        fread(&hp, 1, 1, fp);
+        FREAD_CHECK(&hp,                 1,                          fp);
         v->has_pass = (hp != 0);
-        fread(v->path,             VAULT_PATH_MAX,             1, fp);
-        fread(&v->created_at,      sizeof(v->created_at),      1, fp);
-        fread(&v->last_check,      sizeof(v->last_check),      1, fp);
-        fread(&v->failed_attempts, sizeof(v->failed_attempts), 1, fp);
+        FREAD_CHECK(v->path,             VAULT_PATH_MAX,             fp);
+        FREAD_CHECK(&v->created_at,      sizeof(v->created_at),      fp);
+        FREAD_CHECK(&v->last_check,      sizeof(v->last_check),      fp);
+        FREAD_CHECK(&v->failed_attempts, sizeof(v->failed_attempts), fp);
+        FREAD_CHECK(&v->alert.interval_idx,    sizeof(size_t), fp);
+        FREAD_CHECK(&v->alert.first_triggered, sizeof(time_t), fp);
+        FREAD_CHECK(&v->alert.last_alerted,    sizeof(time_t), fp);
+        FREAD_CHECK(&v->alert.alert_count,     sizeof(size_t), fp);
+        FREAD_CHECK(v->alert.reason,           256,            fp);
+        FREAD_CHECK(v->salt,      SALT_LEN,             fp);
+        FREAD_CHECK(v->pass_hash, SHA256_DIGEST_LENGTH, fp);
 
-        fread(&v->alert.interval_idx,    sizeof(size_t), 1, fp);
-        fread(&v->alert.first_triggered, sizeof(time_t), 1, fp);
-        fread(&v->alert.last_alerted,    sizeof(time_t), 1, fp);
-        fread(&v->alert.alert_count,     sizeof(size_t), 1, fp);
-        fread(v->alert.reason,           256,            1, fp);
+uint32_t fcount;
+FREAD_CHECK(&fcount, 4, fp);
+if (fcount > MAX_FILES_PER_VAULT) {
+    vault_log(LOG_ERROR, "catalog_load: fcount inválido: %u", fcount);
+    fclose(fp); return ERR_IO;
+}
 
-        fread(v->salt,      SALT_LEN,             1, fp);
-        fread(v->pass_hash, SHA256_DIGEST_LENGTH, 1, fp);
+for (uint32_t f = 0; f < fcount; f++) {
+    char    fname[NAME_MAX + 1];
+    char    fhash[HASH_HEX_LEN];
+    time_t  ls;
+    uint8_t mod;
 
-        uint32_t fcount;
-        fread(&fcount, 4, 1, fp);
+    FREAD_CHECK(fname,  NAME_MAX + 1,   fp);
+    FREAD_CHECK(fhash,  HASH_HEX_LEN,   fp);
+    FREAD_CHECK(&ls,    sizeof(time_t), fp);
+    FREAD_CHECK(&mod,   1,              fp);
 
-        for (uint32_t f = 0; f < fcount; f++) {
-            char     fname[NAME_MAX + 1];
-            char     fhash[HASH_HEX_LEN];
-            time_t   ls;
-            uint8_t  mod;
-
-            fread(fname,  NAME_MAX + 1, 1, fp);
-            fread(fhash,  HASH_HEX_LEN, 1, fp);
-            fread(&ls,    sizeof(time_t), 1, fp);
-            fread(&mod,   1, 1, fp);
-
-            FileEntry *e = hashmap_insert(&v->hashmap, fname);
-            if (e) {
-                memcpy(e->hash, fhash, HASH_HEX_LEN);
-                e->last_seen = ls;
-                e->modified  = (mod != 0);
-            }
-        }
+    FileEntry *e = hashmap_insert(&v->hashmap, fname);
+    if (e) {
+        memcpy(e->hash, fhash, HASH_HEX_LEN);
+        e->last_seen = ls;
+        e->modified  = (mod != 0);
+       }
+    }
 
         v->inotify_wd = -1;
     }
@@ -1738,8 +1750,8 @@ static int apply_seccomp_policy(void)
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(tgkill), 0);     
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigaction), 0);
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigprocmask), 0);
-    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigreturn), 0); /* 
-    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigsuspend), 0);/* 
+    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigreturn), 0); 
+    seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(rt_sigsuspend), 0); 
 
     /* Identidade — shell exibe usuário no prompt */
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getuid), 0);    
