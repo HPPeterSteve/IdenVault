@@ -2,7 +2,7 @@
  * diamondVaults.c
  *
  * VAULT SECURITY SYSTEM - Full Linux Implementation
- * Author: Peter Steve (architecture) | Senior Linux Engineer (implementation)
+ * Author: Peter Steve (architecture) | inux Engineer (implementation)
  * Date: 2026-04-11
  * Sandbox v2: 2026-04-19 — DiamondVault Hardened Sandbox Architecture
  *
