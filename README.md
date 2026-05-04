@@ -11,10 +11,6 @@ Armazenar arquivos sensíveis ou rodar scripts de origens desconhecidas exige ca
 1. **Cofres Criptografados:** Diretórios protegidos localmente com criptografia forte (AES-256-GCM + Argon2).
 2. **Sandboxing Nativo:** Execução isolada impedindo acesso indevido ao `/` (root) ou à rede.
 
----
-*(Insira uma Imagem ou Banner Aqui)*  
-<!-- Exemplo: ![Banner do Komodo](img/banner.png) -->
----
 
 ## 🛡️ Mecanismos de Segurança (Linux Native)
 
