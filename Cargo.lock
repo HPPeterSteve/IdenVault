@@ -3,6 +3,43 @@
 version = 4
 
 [[package]]
+name = "VaranusCore"
+version = "0.8.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "argon2",
+ "cc",
+ "chrono",
+ "clap",
+ "color-eyre",
+ "colored",
+ "crossterm 0.29.0",
+ "ctrlc",
+ "duplex",
+ "eframe",
+ "hex",
+ "hmac",
+ "home",
+ "inquire",
+ "io",
+ "nix 0.31.2",
+ "notify",
+ "pbkdf2",
+ "rand",
+ "ratatui",
+ "rustyline",
+ "sha2",
+ "sysinfo",
+ "tui",
+ "walkdir",
+ "windows 0.62.2",
+ "windows-sys 0.61.2",
+ "winres",
+ "winresource",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2772,43 +2809,6 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
-
-[[package]]
-name = "komodo-secure"
-version = "0.8.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "argon2",
- "cc",
- "chrono",
- "clap",
- "color-eyre",
- "colored",
- "crossterm 0.29.0",
- "ctrlc",
- "duplex",
- "eframe",
- "hex",
- "hmac",
- "home",
- "inquire",
- "io",
- "nix 0.31.2",
- "notify",
- "pbkdf2",
- "rand",
- "ratatui",
- "rustyline",
- "sha2",
- "sysinfo",
- "tui",
- "walkdir",
- "windows 0.62.2",
- "windows-sys 0.61.2",
- "winres",
- "winresource",
-]
 
 [[package]]
 name = "kqueue"

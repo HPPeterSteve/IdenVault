@@ -9,10 +9,10 @@ fn main() {
         let mut res = winresource::WindowsResource::new();
         
         // ←←← MUDE AQUI para o caminho correto da sua logo
-        res.set_icon("img/komodo-secure.ico");    
+        res.set_icon("img/VaranusCore.ico");    
         
         res.set("FileDescription", "Komodo Secure - Vault Security System");
-        res.set("ProductName", "Komodo-Secure");
+        res.set("ProductName", "VaranusCore");
         res.set("CompanyName", "Pedrão Projects");
         res.set("LegalCopyright", "© 2026 Pedrão");
         res.set("FileVersion", env!("CARGO_PKG_VERSION"));

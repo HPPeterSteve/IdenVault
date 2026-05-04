@@ -90,7 +90,7 @@ pub fn system_information(options: SystemOptions) {
     let mut sys_info = System::new_all();
     sys_info.refresh_all();
 
-    println!("--- System Komodo-Secure ---");
+    println!("--- System VaranusCore ---");
 
     // CPU
     if options.cpu {

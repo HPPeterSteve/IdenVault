@@ -419,7 +419,7 @@ int vault_status_ffi(uint32_t id) {
 
 #ifndef VAULT_FFI_BUILD
 int main(void) {
-    printf("Komodo-Secure Vault Security Module\n");
+    printf("VaranusCore Vault Security Module\n");
     printf("Versão: 0.8.0\n");
     printf("Compilado: %s %s\n", __DATE__, __TIME__);
     return 0;

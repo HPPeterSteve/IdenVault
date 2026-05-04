@@ -1,14 +1,14 @@
-# Contributing to Komodo-Secure
+# Contributing to VaranusCore
 
-We welcome contributions to the Komodo-Secure project! To ensure a smooth process, please follow the guidelines outlined below:
+We welcome contributions to the VaranusCore project! To ensure a smooth process, please follow the guidelines outlined below:
 
 ## Setup
 
 1. **Clone the Repository**  
    Clone the repository to your local machine:
    ```bash
-   git clone https://github.com/HPPeterSteve/Komodo-Secure.git
-   cd Komodo-Secure
+   git clone https://github.com/HPPeterSteve/VaranusCore.git
+   cd VaranusCore
    ```  
 
 2. **Install Dependencies**  

@@ -1,7 +1,7 @@
 # Security Vulnerabilities Documentation
 
 ## Overview
-This document lists all the known security vulnerabilities found in the Komodo-Secure codebase. Each entry includes the severity level, technical details, proof of concept, and recommended fixes.
+This document lists all the known security vulnerabilities found in the VaranusCore codebase. Each entry includes the severity level, technical details, proof of concept, and recommended fixes.
 
 ### Vulnerability List
 

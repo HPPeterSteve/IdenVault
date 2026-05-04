@@ -1,7 +1,7 @@
 /*
  * main.rs
  *
- * Komodo-Secure — ponto de entrada
+ * VaranusCore — ponto de entrada
  * Integra o core C (vault_security.c) via vault.rs
  *
  * Novos comandos adicionados (delegam ao core C):
@@ -734,7 +734,7 @@ fn main() {
 
     println!(
         "{}",
-        "Komodo-Secure v0.8.0 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
+        "VaranusCore v0.8.0 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
         todos os direitos reservados.
         Digite 'help'"
             .bright_green()
@@ -748,7 +748,7 @@ fn main() {
     .expect("Erro ao definir handler");
 
     loop {
-        let readline = rl.readline(&"Komodo-Secure> ".bright_blue().to_string());
+        let readline = rl.readline(&"VaranusCore> ".bright_blue().to_string());
 
         match readline {
             Ok(line) => {

@@ -39,7 +39,7 @@ int vault_ffi_init(void) {
 
 #ifndef VAULT_FFI_BUILD
 int main(void) {
-    printf("Komodo-Secure FFI Module\n");
+    printf("VaranusCore FFI Module\n");
     printf("Versão: 0.7.0\n");
     return 0;
 }

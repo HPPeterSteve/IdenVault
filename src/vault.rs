@@ -279,7 +279,7 @@ pub fn vault_rule(
 
 /// Função que o main.rs está tentando chamar (Windows AppContainer sandbox).
 pub fn run_in_sandbox(path: &str) {
-    println!("🛡️ Komodo-Secure: Iniciando isolamento para {}", path);
+    println!("🛡️ VaranusCore: Iniciando isolamento para {}", path);
 
     let c_path = match CString::new(path) {
         Ok(s) => s,
