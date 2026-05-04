@@ -29,10 +29,6 @@ cargo build --release
 ./target/release/VaranusCore
 ```
 
----
-*(Insira a Imagem do Terminal Aqui)*  
-<!-- Exemplo: ![Terminal do Komodo](img/terminal.png) -->
----
 
 Abaixo estão os comandos do console do Komodo para aplicar as políticas de segurança no seu sistema Linux:
 
