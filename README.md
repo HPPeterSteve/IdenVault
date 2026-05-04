@@ -12,8 +12,8 @@ Armazenar arquivos sensíveis ou rodar scripts de origens desconhecidas exige ca
 2. **Sandboxing Nativo:** Execução isolada impedindo acesso indevido ao `/` (root) ou à rede.
 
 ---
-*(Insira a Imagem da Interface Aqui)*  
-<!-- Exemplo: ![Interface do Komodo](img/interface_qt.png) -->
+*(Insira uma Imagem ou Banner Aqui)*  
+<!-- Exemplo: ![Banner do Komodo](img/banner.png) -->
 ---
 
 ## 🛡️ Mecanismos de Segurança (Linux Native)
@@ -80,8 +80,8 @@ Comandos para manipular diretamente a criptografia e os cofres no sistema de arq
   ```
   *(Utiliza uma chave USB/Hex combinada com senha para máxima segurança)*
 
-## 🤝 Interface Gráfica e FFI (C/C++)
+## 🤝 Integração FFI (C/C++)
 
-A engine expõe uma interface **FFI C-Bindings**. Como o projeto foi desenvolvido em Rust/C, ele está totalmente preparado para ser integrado de forma nativa e super rápida em aplicações C++. 
+A engine expõe uma interface **FFI C-Bindings**. Como o projeto foi desenvolvido em Rust/C, ele está totalmente preparado para ser integrado de forma nativa e super rápida em aplicações C++ ou outras linguagens compatíveis com chamadas C. 
 
-Isso possibilita o controle total da engine por meio de interfaces gráficas maduras para o desktop Linux, como as desenvolvidas em **Qt (QML / C++)**, unindo a performance do back-end de segurança com um front-end moderno.
+Isso possibilita o controle total da engine por ferramentas de terceiros ou eventuais interfaces gráficas futuras, unindo a performance do back-end de segurança com qualquer tipo de front-end.
