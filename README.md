@@ -1,67 +1,87 @@
 # 🦎 Komodo Core (VaranusCore)
 
-**Komodo Core** (ou *VaranusCore*) é uma engine de cofre digital (digital vault) e ambiente de execução restrito, focada em segurança prática para sistemas operacionais. 
+**Komodo Core** é uma engine de cofre digital (digital vault) e ambiente de execução restrito, focada em segurança prática e projetada nativamente para **Linux**.
 
-Construído com uma fundação robusta em **Rust** e um core de alta performance em **C**, o projeto não promete "segurança inquebrável por mágica". Em vez disso, ele fornece ferramentas maduras e utilitários para proteger seus arquivos sensíveis e isolar execuções perigosas, extraindo o melhor das APIs do kernel Linux.
+Construído com uma fundação robusta em **Rust** e um core de alta performance em **C**, o projeto fornece ferramentas maduras para proteger seus arquivos sensíveis e isolar execuções perigosas, extraindo o melhor das APIs do kernel Linux.
 
-## 🎯 O que o Komodo Core faz?
+## 🎯 Por que o Komodo Core?
 
-No mundo real, armazenar chaves de API, bancos de dados sensíveis ou rodar scripts de origens desconhecidas exige cautela. O Komodo Core resolve isso através de duas frentes práticas:
+Armazenar arquivos sensíveis ou rodar scripts de origens desconhecidas exige cautela no ambiente Linux. O Komodo Core atua em duas frentes:
 
-1. **Cofres Criptografados (Vaults):** Diretórios protegidos com criptografia padrão da indústria (AES-256-GCM + Argon2).
-2. **Sandboxing Nativo (Linux):** Execução de processos isolados, impedindo que acessem o disco inteiro ou a rede sem permissão.
-
-## 🛡️ Features de Segurança
-
-Acreditamos em aproveitar os mecanismos do sistema operacional:
-
-- **Isolamento de Processos (Sandboxing no Linux):** Utiliza *PID, Mount e Network Namespaces* para rodar processos em um ambiente onde eles não conseguem enxergar ou interagir com o resto do sistema.
-- **Filtragem de Syscalls:** Restringe o que um processo isolado pode solicitar ao kernel através do *Seccomp*.
-- **Monitoramento de Arquivos:** Usa *inotify* para rastrear em tempo real quem e o que está mexendo nos arquivos do cofre.
-- **Criptografia Realista:** Criptografia e derivação de chaves usando OpenSSL/Rust Crypto. Protege os dados em repouso contra acesso físico ou exploração de diretórios.
-- **Políticas de Acesso:** Permite configurar número máximo de tentativas de senha (lockout automático) e janelas de horário permitidas para desbloqueio (`vault-rule`).
-
-## 🛠️ Como usar a Interface CLI
-
-O Komodo Core funciona como um shell interativo contínuo (REPL). Para iniciar o console:
-
-```bash
-cargo run --release
-```
-
-Dentro do shell `VaranusCore>`, você pode digitar `help` ou usar diretamente os comandos:
-
-### Gerenciamento Básico
-- `vault-create <nome> <caminho> [normal|protected]`: Cria um novo cofre.
-- `secure-copy <arquivo> <cofre>`: Copia e protege um arquivo enviando-o para dentro do cofre.
-- `vault-encrypt <id>` / `vault-decrypt <id>`: Aplica ou remove a proteção criptográfica nos arquivos do cofre ativo.
-- `vault-files <id>`: Lista todo o conteúdo e arquivos atualmente rastreados.
-
-### Isolamento e Sandbox
-- `run-in-sandbox <diretório>`: Executa os binários ou scripts de um diretório dentro do ambiente isolado.
-- `isolate-directory <dir>`: Aplica travas no diretório para isolá-lo de leituras não autorizadas do restante do sistema.
-
-### Controle de Segurança
-- `vault-rule <id> <max_fails> [hora_inicio hora_fim]`: Configura limites de tentativas erradas e restringe em quais horas do dia o cofre pode ser aberto.
-- `derive-master-key`: Gera uma chave mestre unindo uma senha e uma entrada física (como uma chave USB/Hex).
-
-## ⚙️ Dependências e Compilação
-
-Sendo um projeto que interage baixo-nível com o sistema, certifique-se de ter instalado:
-- Toolchain do **Rust** (Cargo/rustc).
-- Compilador **C** (GCC ou Clang) para o core FFI.
-- **OpenSSL** (`libssl-dev` no Ubuntu/Debian ou `openssl-devel` no RHEL/Fedora).
-
-Compile o projeto localmente com:
-```bash
-cargo build --release
-```
-
-## 🤝 Integração Externa (FFI C-Bindings)
-
-O Komodo foi pensado para ser incorporado. Se você não quiser usar a CLI e sim integrar a engine a um servidor web ou script, ele expõe uma interface FFI (Foreign Function Interface) em C puro. 
-
-Verifique no código as funções prefixadas com `vault_*_ffi` (ex: `vault_create_ffi`, `vault_encrypt_ffi`) para fazer chamadas diretas via Python (`ctypes`), Node.js ou C/C++.
+1. **Cofres Criptografados:** Diretórios protegidos localmente com criptografia forte (AES-256-GCM + Argon2).
+2. **Sandboxing Nativo:** Execução isolada impedindo acesso indevido ao `/` (root) ou à rede.
 
 ---
-**Nota Final:** Não existe bala de prata em segurança da informação. O Komodo Core mitiga diversos riscos usando boas práticas e namespaces nativos do Linux, mas a segurança final do seu ambiente também depende de senhas fortes, de um host atualizado e do bom gerenciamento das chaves.
+*(Insira a Imagem da Interface Aqui)*  
+<!-- Exemplo: ![Interface do Komodo](img/interface_qt.png) -->
+---
+
+## 🛡️ Mecanismos de Segurança (Linux Native)
+
+Aproveitamos a segurança embutida no próprio kernel:
+- **Namespaces (PID, Mount, Network):** Criação de ambientes isolados para os processos.
+- **Seccomp (Secure Computing):** Filtragem estrita de chamadas de sistema (Syscalls).
+- **inotify:** Rastreamento em tempo real de alterações de arquivos.
+- **OpenSSL/Rust Crypto:** Criptografia em repouso imune a vazamentos físicos.
+
+## 💻 Comandos e Uso (Linux)
+
+O projeto roda como uma interface de linha de comando iterativa no Linux. Compile com o Cargo e execute:
+
+```bash
+cargo build --release
+./target/release/VaranusCore
+```
+
+---
+*(Insira a Imagem do Terminal Aqui)*  
+<!-- Exemplo: ![Terminal do Komodo](img/terminal.png) -->
+---
+
+Abaixo estão os comandos do console do Komodo para aplicar as políticas de segurança no seu sistema Linux:
+
+### Sandboxing e Isolamento
+O core extrai o poder das restrições do Linux para os seguintes comandos:
+
+- **Isolar um diretório:**
+  ```text
+  isolate-directory /caminho/do/diretorio
+  ```
+  *(Aplica políticas e bloqueia acessos externos ao diretório)*
+
+- **Rodar processo em Sandbox:**
+  ```text
+  run-in-sandbox /caminho/do/script.sh
+  ```
+  *(Utiliza Namespaces e Seccomp para rodar o processo de forma isolada, protegendo o sistema host)*
+
+### Operações do Cofre (Vault)
+Comandos para manipular diretamente a criptografia e os cofres no sistema de arquivos do Linux:
+
+- **Criar cofre protegido:**
+  ```text
+  vault-create meu_cofre /home/usuario/cofres/meu_cofre protected
+  ```
+
+- **Proteger arquivo (Move e criptografa):**
+  ```text
+  secure-copy /home/usuario/docs/secreto.pdf /home/usuario/cofres/meu_cofre
+  ```
+
+- **Bloqueio e Desbloqueio de Arquivos (Criptografia):**
+  ```text
+  vault-encrypt <id_do_cofre>
+  vault-decrypt <id_do_cofre>
+  ```
+
+- **Gerar Chave de Segurança Física:**
+  ```text
+  derive-master-key
+  ```
+  *(Utiliza uma chave USB/Hex combinada com senha para máxima segurança)*
+
+## 🤝 Interface Gráfica e FFI (C/C++)
+
+A engine expõe uma interface **FFI C-Bindings**. Como o projeto foi desenvolvido em Rust/C, ele está totalmente preparado para ser integrado de forma nativa e super rápida em aplicações C++. 
+
+Isso possibilita o controle total da engine por meio de interfaces gráficas maduras para o desktop Linux, como as desenvolvidas em **Qt (QML / C++)**, unindo a performance do back-end de segurança com um front-end moderno.
