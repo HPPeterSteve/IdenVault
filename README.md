@@ -1,79 +1,140 @@
-# 🦎 Komodo Core (VaranusCore)
+# Komodo Core
 
-**Komodo Core** é uma engine de cofre digital (digital vault) e ambiente de execução restrito, focada em segurança prática e projetada nativamente para **Linux**.
+**Komodo Core** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
 
-Construído com uma fundação robusta em **Rust** e um core de alta performance em **C**, o projeto fornece ferramentas maduras para proteger seus arquivos sensíveis e isolar execuções perigosas, extraindo o melhor das APIs do kernel Linux.
+Written in **C** (security core) and **Rust** (CLI layer), it provides cryptographic file protection and kernel-level process sandboxing — extracting the full isolation capability of the Linux kernel rather than relying on userspace abstractions.
 
-## 🎯 Por que o Komodo Core?
+> Beta. Tested on Linux 5.15+. Contributions and pentest reports welcome.
 
-Armazenar arquivos sensíveis ou rodar scripts de origens desconhecidas exige cautela no ambiente Linux. O Komodo Core atua em duas frentes:
+---
 
-1. **Cofres Criptografados:** Diretórios protegidos localmente com criptografia forte (AES-256-GCM + Argon2).
-2. **Sandboxing Nativo:** Execução isolada impedindo acesso indevido ao `/` (root) ou à rede.
+## Architecture
 
+The project operates on two independent subsystems:
 
-## 🛡️ Mecanismos de Segurança (Linux Native)
+**Vault subsystem** — encrypted directories protected with AES-256-GCM, key derivation via PBKDF2-HMAC-SHA256 (310,000 iterations, OWASP 2023), real-time integrity monitoring via inotify, binary catalog with HMAC-SHA256 tamper detection, and a rate-limited authentication engine with exponential backoff alerting.
 
-Aproveitamos a segurança embutida no próprio kernel:
-- **Namespaces (PID, Mount, Network):** Criação de ambientes isolados para os processos.
-- **Seccomp (Secure Computing):** Filtragem estrita de chamadas de sistema (Syscalls).
-- **inotify:** Rastreamento em tempo real de alterações de arquivos.
-- **OpenSSL/Rust Crypto:** Criptografia em repouso imune a vazamentos físicos.
+**Sandbox subsystem** — five independent isolation layers where each layer assumes the previous one has been compromised:
 
-## 💻 Comandos e Uso (Linux)
+```
+Layer 1  User Namespace      — sandbox root maps to nobody (UID 65534) on host
+Layer 2  Mount + PID NS      — isolated process tree and filesystem view
+Layer 3  Pivot Root          — replaces chroot; old root unmounted with MNT_DETACH
+Layer 4  Capability Drop     — all Linux capabilities removed + PR_SET_NO_NEW_PRIVS
+Layer 5  Seccomp-BPF         — syscall allowlist, SCMP_ACT_KILL_PROCESS as default
+```
 
-O projeto roda como uma interface de linha de comando iterativa no Linux. Compile com o Cargo e execute:
+---
+
+## Security Properties
+
+| Property | Implementation |
+|---|---|
+| Encryption | AES-256-GCM (authenticated) |
+| Key derivation | PBKDF2-HMAC-SHA256, 310 000 iterations |
+| Password verification | CRYPTO_memcmp (constant-time) |
+| Catalog integrity | HMAC-SHA256 over full payload |
+| File integrity | SHA-256 per file, inotify-triggered rescan |
+| Sandbox escape prevention | UserNS + PivotRoot + Caps + Seccomp-BPF |
+| Memory hygiene | explicit_bzero on all key/password buffers |
+| Auth lockout | Configurable max attempts + exponential alert backoff |
+
+---
+
+## Build
+
+Dependencies:
+
+```bash
+sudo apt install libssl-dev libseccomp-dev libcap-dev
+```
 
 ```bash
 cargo build --release
 ./target/release/VaranusCore
 ```
 
+The build script compiles the C core (`diamondVaults.c`) and links it into the Rust binary via FFI.
 
-Abaixo estão os comandos do console do Komodo para aplicar as políticas de segurança no seu sistema Linux:
+---
 
-### Sandboxing e Isolamento
-O core extrai o poder das restrições do Linux para os seguintes comandos:
+## Usage
 
-- **Isolar um diretório:**
-  ```text
-  isolate-directory /caminho/do/diretorio
-  ```
-  *(Aplica políticas e bloqueia acessos externos ao diretório)*
+### Vault operations
 
-- **Rodar processo em Sandbox:**
-  ```text
-  run-in-sandbox /caminho/do/script.sh
-  ```
-  *(Utiliza Namespaces e Seccomp para rodar o processo de forma isolada, protegendo o sistema host)*
+```
+vault-create <name> <path> <type>     Create a vault (type: normal | protected)
+vault-encrypt <id>                    Encrypt all files in vault (AES-256-GCM)
+vault-decrypt <id>                    Decrypt vault files
+vault-scan <id>                       Force integrity scan
+vault-resolve <id>                    Resolve active alert
+vault-info <id>                       Show vault details
+vault-files <id>                      List tracked files and hash status
+vault-rule <id> <max_fails> [h h]     Add security rule (lockout + time window)
+vault-passwd <id>                     Change vault password
+vault-unlock <id>                     Unlock after failed-attempt lockout
+vault-delete <id>                     Delete vault
+```
 
-### Operações do Cofre (Vault)
-Comandos para manipular diretamente a criptografia e os cofres no sistema de arquivos do Linux:
+```bash
+# Create a protected vault
+vault-create secrets /home/user/vaults/secrets protected
 
-- **Criar cofre protegido:**
-  ```text
-  vault-create meu_cofre /home/usuario/cofres/meu_cofre protected
-  ```
+# Move and encrypt a file into it
+secure-copy /home/user/docs/private.pdf /home/user/vaults/secrets
 
-- **Proteger arquivo (Move e criptografa):**
-  ```text
-  secure-copy /home/usuario/docs/secreto.pdf /home/usuario/cofres/meu_cofre
-  ```
+# Encrypt everything inside
+vault-encrypt 1
 
-- **Bloqueio e Desbloqueio de Arquivos (Criptografia):**
-  ```text
-  vault-encrypt <id_do_cofre>
-  vault-decrypt <id_do_cofre>
-  ```
+# Open vault in hardened sandbox shell
+vault-sandbox 1
+```
 
-- **Gerar Chave de Segurança Física:**
-  ```text
-  derive-master-key
-  ```
-  *(Utiliza uma chave USB/Hex combinada com senha para máxima segurança)*
+### Sandbox
 
-## 🤝 Integração FFI (C/C++)
+```
+vault-sandbox <id>     Open vault directory in isolated shell (5-layer sandbox)
+run-in-sandbox <dir>   Run directory in sandbox
+isolate-directory <dir> Apply isolation policies to directory
+```
 
-A engine expõe uma interface **FFI C-Bindings**. Como o projeto foi desenvolvido em Rust/C, ele está totalmente preparado para ser integrado de forma nativa e super rápida em aplicações C++ ou outras linguagens compatíveis com chamadas C. 
+### Key derivation
 
-Isso possibilita o controle total da engine por ferramentas de terceiros ou eventuais interfaces gráficas futuras, unindo a performance do back-end de segurança com qualquer tipo de front-end.
+```
+derive-master-key      Derive master key from password + USB hardware key (hex)
+```
+
+---
+
+## FFI Interface
+
+The C security core exposes a stable FFI interface consumed by the Rust CLI layer via `build.rs`. The interface is designed to be callable from any language with C FFI support — C++, Python (ctypes), Go (cgo).
+
+See `c_src/` for the C API and `src/vault.rs` for the Rust bindings.
+
+---
+
+## Security Documents
+
+| Document | Description |
+|---|---|
+| `SECURITY_AUDIT_SUMMARY.md` | Full audit: 9 vulnerabilities identified and fixed |
+| `VULNERABILITIES.md` | Detailed vulnerability breakdown by severity |
+| `REMEDIATION_CHECKLIST.md` | Fix status per finding |
+| `SECURITY_REVIEW.md` | Architecture security review |
+
+---
+
+## Status
+
+- C core: feature-complete, hardened
+- Rust CLI: feature-complete
+- Module split (single-file → multi-file): in progress
+- Windows support: not planned
+- Pentest: in progress (external)
+
+---
+
+## License
+
+MIT — see `LICENSE`.
