@@ -1,67 +1,134 @@
-# Contributing to VaranusCore
+# Contributing to Komodo Core
 
-We welcome contributions to the VaranusCore project! To ensure a smooth process, please follow the guidelines outlined below:
+Komodo Core is a security-focused project. Contributions are welcome, but the bar for correctness is high — especially in the C core, where mistakes have real security consequences.
+
+Read this document before opening a pull request.
+
+---
+
+## What we need help with
+
+Check the open issues. Issues labeled `good first issue` are self-contained and well-scoped. Issues labeled `security` require extra care and review.
+
+Current priorities:
+- Module split of `diamondVaults.c` into focused `.c/.h` pairs
+- Expanding test coverage in `tests/`
+- Documentation improvements
+- Audit of the seccomp allowlist for completeness
+
+---
 
 ## Setup
 
-1. **Clone the Repository**  
-   Clone the repository to your local machine:
-   ```bash
-   git clone https://github.com/HPPeterSteve/VaranusCore.git
-   cd VaranusCore
-   ```  
+Dependencies (Linux only — this project does not support Windows):
 
-2. **Install Dependencies**  
-   Install any necessary dependencies using the package manager of your choice. For example:
-   ```bash
-   npm install
-   ```  
+```bash
+sudo apt install build-essential libssl-dev libseccomp-dev libcap-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
 
-3. **Environment Setup**  
-   Ensure that you have the appropriate environment set up. Depending on the project, you may need to configure environment variables or other settings.
+Clone and build:
 
-## Code Style
+```bash
+git clone https://github.com/HPPeterSteve/Komodo-Core.git
+cd Komodo-Core
+cargo build
+```
 
-- Please follow the coding standards defined in the project. This may include formatting, naming conventions, and comment styles.
-- We generally recommend using ESLint for JavaScript and Prettier for code formatting. Please ensure your code passes linting before submitting.
+The build script (`build.rs`) compiles the C core automatically via `cc` and links it into the Rust binary.
+
+---
+
+## Code style
+
+**C core (`c_src/`, `core_linux/`):**
+- Follow the existing style — 4-space indent, braces on same line for functions
+- Every function that can fail must return `VaultError`
+- Every early return path that holds a key or password buffer must call `explicit_bzero` before returning
+- No `malloc` without a corresponding free on every exit path
+- Use `goto cleanup` pattern for multi-resource cleanup — see existing functions in `vault_crypto.c` as reference
+
+**Rust layer (`src/`):**
+- Standard `rustfmt` formatting — run `cargo fmt` before committing
+- No `unwrap()` in production paths — use proper error propagation
+- FFI calls to the C core must be in `unsafe` blocks with a comment explaining why it is safe
+
+---
+
+## Security guidelines
+
+This is the most important section.
+
+**If you are touching the C core:**
+- Never use `strcpy`, `sprintf`, `gets` — use `strncpy` with explicit null termination, `snprintf`, `fgets`
+- Never use `stat()` on paths inside a vault — use `lstat()` to avoid symlink following
+- Never compare cryptographic values with `memcmp` or `==` — use `CRYPTO_memcmp`
+- Always call `explicit_bzero` on key and password buffers, including error paths
+- If you add a new syscall to the seccomp allowlist in `apply_seccomp_policy()`, explain why in a comment
+
+**If you find a vulnerability:**
+Do not open a public issue. Open a GitHub Security Advisory or email the maintainer directly. See `SECURITY.md`.
+
+---
 
 ## Testing
 
-1. **Run Tests**  
-   Before you submit your contribution, make sure all tests are passing:
-   ```bash
-   npm test
-   ``` 
+Run the existing test suite:
 
-2. **Add New Tests**  
-   If you are adding new features, please include appropriate tests to cover your changes.
+```bash
+cargo test
+```
 
-## Pull Request Process
+The tests in `tests/security_exploit.rs` call the C core directly via FFI and verify security boundaries — buffer overflow rejection, null pointer handling, authentication bypass prevention.
 
-1. **Create a Branch**  
-   Always create a new branch for your changes:
-   ```bash
-   git checkout -b my-feature-branch
-   ```  
+When adding a new feature, add a corresponding test. When fixing a bug, add a test that would have caught it.
 
-2. **Commit Your Changes**  
-   Make sure to write meaningful commit messages that describe your changes:
-   ```bash
-   git commit -m "Add feature X"
-   ```  
+---
 
-3. **Push Your Branch**  
-   Push your branch to the repository:
-   ```bash
-   git push origin my-feature-branch
-   ```  
+## Pull request process
 
-4. **Open a Pull Request**  
-   Go to the GitHub repository and click on "New Pull Request". Ensure that you provide a clear description of your changes and link any relevant issues.
+1. Create a branch from `main`:
+```bash
+git checkout -b fix/catalog-hmac-regression
+```
 
-## Additional Notes
+2. Make your changes. Keep commits focused — one logical change per commit.
 
-- Please be respectful and considerate in your comments and contributions.
-- Review the existing code and discussions within the project to understand the direction and philosophy of the project.
+3. Write a clear commit message:
+```bash
+git commit -m "vault_catalog: reintroduce HMAC-SHA256 integrity check
 
-Thank you for your contributions!
+Fixes regression introduced in refactor. catalog_save() now computes
+HMAC-SHA256 over the serialized payload and appends it before close.
+catalog_load() verifies with CRYPTO_memcmp before processing any byte.
+Closes #3."
+```
+
+4. Run tests before pushing:
+```bash
+cargo test
+cargo clippy
+cargo fmt --check
+```
+
+5. Open a pull request with:
+   - What the change does
+   - Why it is necessary
+   - Which issue it closes (if any)
+   - Any security implications
+
+---
+
+## What gets rejected
+
+- Changes that remove `explicit_bzero` calls
+- Changes that replace `CRYPTO_memcmp` with standard comparison
+- Changes that add syscalls to the seccomp allowlist without justification
+- Untested changes to the authentication or encryption logic
+- Generic improvements that don't fit the project's scope
+
+---
+
+## Questions
+
+Open a discussion on GitHub or comment on the relevant issue.
