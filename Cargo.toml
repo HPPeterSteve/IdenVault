@@ -1,5 +1,5 @@
 [package]
-name = "KomoduCore"
+name = "FridgeEncrypt"
 version = "0.8.0"
 edition = "2021"
 build = "build.rs"
