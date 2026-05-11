@@ -1,4 +1,4 @@
-# Komodo Core
+# Idencrypt
 
 **Komodo Core** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
 
