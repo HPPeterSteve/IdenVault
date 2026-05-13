@@ -1,4 +1,4 @@
-# Idenvault
+# IdenVault
 
 **IdenVault** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
 
