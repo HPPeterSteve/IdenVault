@@ -58,7 +58,6 @@ const ALL_COMMANDS: &[&str] = &[
     "system-information",
     "list-process-status",
     "derive-master-key",
-    "check_sandbox",
     "help",
     "exit",
     /* novos — core C */
@@ -76,6 +75,7 @@ const ALL_COMMANDS: &[&str] = &[
     "vault-files",
     "vault-sandbox",
     "vault-rule",
+    "vault-export",
 ];
 
 fn show_help() {
@@ -114,12 +114,12 @@ vault-info    <id>                     → detalhes do cofre
 vault-files   <id>                     → lista arquivos rastreados
 vault-sandbox <id>                     → abre cofre em shell sandbox
 vault-rule    <id> <max_fails> [h_from h_to]  → adiciona regra de segurança
+vault-export  <id> <file> <dst>              → exporta arquivo do cofre
 
 ── Sistema ───────────────────────────────────────────────────────────────
 system-information [cpu] [memory] [disks] [networks] [processes]
 list-process-status        → lista status dos processos ativos
 derive-master-key          → deriva master key (senha + chave USB)
-check_sandbox              → verifica configuração do sandbox
 
 help                       → esta ajuda
 exit                       → sair
@@ -428,10 +428,6 @@ fn handle_command(parts: Vec<&str>) {
             }
         }
 
-        "check_sandbox" => {
-            log::info("Executando check_setup_app_container_and_try_hard_isolate");
-            sys_info::check_setup_app_container_and_try_hard_isolate();
-        }
 
         "help" => {
             show_help();
@@ -701,6 +697,26 @@ fn handle_command(parts: Vec<&str>) {
             
         }
 
+        /* vault-export <id> <file> <dst> */
+        "vault-export" => {
+            let Some(id) = parse_id(parts.get(1), "vault-export") else { return };
+            let filename = parts.get(2).map(|s| *s);
+            let dst_path = parts.get(3).map(|s| *s);
+
+            if let (Some(f), Some(d)) = (filename, dst_path) {
+                log::info(&format!("vault-export id={} file={} dst={}", id, f, d));
+                match vault::vault_export_file(id, f, d) {
+                    Ok(_)  => println!("{}", "✔ Arquivo exportado com sucesso.".green()),
+                    Err(e) => {
+                        log::error(&format!("vault-export: {}", e));
+                        eprintln!("{}", format!("✖ Erro: {}", e).red());
+                    }
+                }
+            } else {
+                eprintln!("{}", "✖ vault-export: nome do arquivo e destino obrigatórios.".red());
+            }
+        }
+
         /* ── comando desconhecido — Levenshtein sugere o mais próximo ── */
         unknown => {
             log::warn(&format!("Comando inválido: {}", unknown));
@@ -732,17 +748,41 @@ fn main() {
     let mut rl = DefaultEditor::new().unwrap();
     log::info("Aplicação iniciada.");
 
+    /* ── Inicializa o core C: carrega catálogo do disco, inicia monitor ── */
+    match vault::vault_init() {
+        Ok(()) => log::info("Core C inicializado: catálogo carregado do disco."),
+        Err(e) => {
+            eprintln!(
+                "{}",
+                format!("⚠ Falha ao inicializar core C: {} (continuando sem persistência)", e)
+                    .yellow()
+            );
+        }
+    }
+
     println!(
         "{}",
-        "VaranusCore v0.8.0 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
+        "VaranusCore v0.8.1 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
         todos os direitos reservados.
         Digite 'help'"
             .bright_green()
     );
 
+    /* ── Ctrl+C: shutdown graceful — salva catálogo antes de sair ─────── */
     ctrlc::set_handler(|| {
-        println!("\n^C");
-        log::info("Aplicação fechando");
+        println!("\n{}", "^C — Salvando catálogo...".yellow());
+        log::info("Ctrl+C recebido — executando shutdown graceful");
+
+        /* Salva catálogo no disco e limpa memória sensível */
+        match vault::vault_shutdown() {
+            Ok(()) => log::info("Catálogo salvo com sucesso."),
+            Err(e) => {
+                eprintln!("⚠ Erro ao salvar catálogo: {}", e);
+                log::error(&format!("Erro no shutdown: {}", e));
+            }
+        }
+
+        log::info("Aplicação fechando (graceful)");
         std::process::exit(0);
     })
     .expect("Erro ao definir handler");
@@ -757,18 +797,36 @@ fn main() {
                 if input.is_empty() {
                     continue;
                 }
+
+                /* Comando 'quit' / 'exit' → shutdown graceful */
+                if input == "quit" || input == "exit" {
+                    println!("{}", "Salvando catálogo e encerrando...".yellow());
+                    match vault::vault_shutdown() {
+                        Ok(()) => log::info("Catálogo salvo com sucesso."),
+                        Err(e) => eprintln!("⚠ Erro ao salvar: {}", e),
+                    }
+                    log::info("Aplicação encerrada pelo usuário.");
+                    break;
+                }
+
                 let parts: Vec<&str> = input.split_whitespace().collect();
                 handle_command(parts);
             }
 
             Err(ReadlineError::Eof) => {
-                println!("\n^D");
+                println!("\n{}", "^D — Salvando catálogo...".yellow());
+                match vault::vault_shutdown() {
+                    Ok(()) => log::info("Catálogo salvo com sucesso (EOF)."),
+                    Err(e) => eprintln!("⚠ Erro ao salvar: {}", e),
+                }
                 log::info("EOF detectado.");
                 break;
             }
 
             Err(err) => {
                 log::error(&format!("Erro na leitura: {:?}", err));
+                /* Tenta salvar mesmo em erro */
+                let _ = vault::vault_shutdown();
                 break;
             }
         }
