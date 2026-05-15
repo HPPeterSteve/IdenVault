@@ -1,4 +1,4 @@
-# Release Notes — FridgeVault (VaranusCore) v0.8.1
+# Release Notes — Idenvault (VaranusCore) v0.8.1
 
 ### Refinamentos v0.8.1
 *   **Correção de Typos**: Sugestão automática de comandos via Levenshtein.

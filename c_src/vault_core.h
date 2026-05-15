@@ -247,6 +247,17 @@ extern VaultRule   g_rules[MAX_RULES];
 extern uint32_t    g_rule_count;
 extern volatile bool g_running;
 
+#define MAX_TRUSTED_PROCESSES 32
+
+typedef struct {
+    pid_t pid;
+    time_t added_at;
+    char executable_path[PATH_MAX];
+} TrustedProcess;
+
+static TrustedProcess g_trusted_processes[MAX_TRUSTED_PROCESSES] = {0};
+static size_t g_trusted_count = 0;
+static pthread_mutex_t g_trusted_lock = PTHREAD_MUTEX_INITIALIZER;
 /* ─────────────────────────────────────────────
  *  ASSERTION MACROS
  * ───────────────────────────────────────────── */

@@ -97,6 +97,7 @@ unsafe extern "C" {
     /* Vault status (retorna status code do vault: 0=OK,1=LOCKED,2=ALERT,3=DELETED) */
     fn vault_get_status_ffi(id: c_uint) -> c_int;
     fn vault_export_file_ffi(id: c_uint, filename: *const c_char, dst_path: *const c_char) -> c_int;
+    fn vault_trust_process_ffi(pid: c_int);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -166,6 +167,11 @@ fn c_err(code: c_int) -> Result<(), String> {
 pub fn vault_init() -> Result<(), String> {
     let code = unsafe { vault_ffi_init() };
     c_err(code)
+}
+pub fn trust_current_process() {
+    unsafe {
+        vault_trust_process_ffi(std::process::id() as c_int);
+    }
 }
 
 /// Encerra o subsistema C: salva catálogo no disco, para monitor, limpa memória.
