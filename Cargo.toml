@@ -1,6 +1,6 @@
 [package]
 name = "FridgeVault"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 build = "build.rs"
 
@@ -10,14 +10,8 @@ name = "VaranusCore"
 path = "src/main.rs"
 
 [dependencies]
-# GUI / TUI
-eframe = "0.31.0"
-tui = "0.19"
-ratatui = { version = "0.30", features = ["crossterm"] }
-crossterm = { version = "0.29", features = ["event-stream"] }
-colored = "3.1.1"
-
 # CLI / Interação
+colored = "3.1.1"
 clap = "4.6.0"
 inquire = "0.9.4"
 rustyline = "17.0.2"
@@ -69,3 +63,10 @@ winres = "0.1"
 winresource = "0.1"
 
 [package.metadata.bundle]
+
+[profile.release]
+opt-level = "z"     # Otimiza para tamanho
+lto = true          # Link Time Optimization (otimização pesada no link)
+codegen-units = 1   # Reduz unidades de codegen para melhor compressão
+panic = "abort"     # Remove lógica de unwinding (reduz tamanho)
+strip = true        # Remove símbolos de debug do binário final

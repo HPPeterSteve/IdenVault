@@ -1,4 +1,15 @@
 // build.rs
+//
+// Compiles the vault security C modules into libvault_security.a
+// and links them into the Rust binary.
+//
+// New structure (split from diamondVaults.c):
+//   vault_core.h      — header (structs, enums, constants)
+//   vault_crypto.c    — logging, sanitisation, SHA-256, PBKDF2, AES-256-GCM
+//   vault_catalog.c   — hashmap, catalog save/load, vault CRUD, globals
+//   vault_monitor.c   — inotify, alerts, rules, monitor thread
+//   vault_sandbox.c   — sandbox v2 (Linux) / stub (Windows)
+//   vault_ffi.c       — FFI wrappers + init/shutdown
 
 use std::process::Command;
 
@@ -24,54 +35,88 @@ fn main() {
     // ====================== COMPILAÇÃO DOS ARQUIVOS C ======================
     let out_dir = std::env::var("OUT_DIR").unwrap();
 
-    // 1. Compilar vault_security.c
-    let status = Command::new("gcc")
-        .args([
-            "-O2", "-Wall", "-Wextra",
-            "-DVAULT_FFI_BUILD", "-fPIC", "-c",
-            "c_src/vault_security.c",
-            "-o",
-        ])
-        .arg(format!("{}/vault_security.o", out_dir))
-        .status()
-        .expect("Falha ao compilar vault_security.c");
+    // List of C source files to compile
+    let c_sources = [
+        "c_src/vault_crypto.c",
+        "c_src/vault_catalog.c",
+        "c_src/vault_monitor.c",
+        "c_src/vault_sandbox.c",
+        "c_src/vault_ffi.c",
+    ];
 
-    assert!(status.success(), "Compilação de vault_security.c falhou");
+    let mut object_files: Vec<String> = Vec::new();
 
-    // 2. Compilar vault_ffi.c
-    let status = Command::new("gcc")
-        .args([
-            "-O2", "-Wall", "-Wextra",
-            "-DVAULT_FFI_BUILD", "-fPIC", "-c",
-            "c_src/vault_ffi.c",
-            "-o",
-        ])
-        .arg(format!("{}/vault_ffi.o", out_dir))
-        .status()
-        .expect("Falha ao compilar vault_ffi.c");
+    for src in &c_sources {
+        // Extract base name for the .o file
+        let base = std::path::Path::new(src)
+            .file_stem()
+            .unwrap()
+            .to_str()
+            .unwrap();
 
-    assert!(status.success(), "Compilação de vault_ffi.c falhou");
+        let obj_path = format!("{}/{}.o", out_dir, base);
 
-    // 3. Criar biblioteca estática
+        let mut gcc_args = vec![
+            "-Os".to_string(), // Otimiza para tamanho
+            "-fdata-sections".to_string(), // Seções de dados individuais
+            "-ffunction-sections".to_string(), // Seções de funções individuais
+            "-Wall".to_string(),
+            "-Wextra".to_string(),
+            "-DVAULT_FFI_BUILD".to_string(),
+            "-fPIC".to_string(),
+            "-c".to_string(),
+            "-I".to_string(),
+            "c_src".to_string(),
+            src.to_string(),
+            "-o".to_string(),
+            obj_path.clone(),
+        ];
+
+        // On Linux, add include paths for OpenSSL, seccomp, etc.
+        #[cfg(target_os = "linux")]
+        {
+            gcc_args.push("-pthread".to_string());
+        }
+
+        let status = Command::new("gcc")
+            .args(&gcc_args)
+            .status()
+            .unwrap_or_else(|e| panic!("Failed to compile {}: {}", src, e));
+
+        assert!(status.success(), "Compilation of {} failed", src);
+
+        object_files.push(obj_path);
+    }
+
+    // Create static library from all object files
+    let lib_path = format!("{}/libvault_security.a", out_dir);
+
+    let mut ar_args = vec!["rcs".to_string(), lib_path];
+    ar_args.extend(object_files);
+
     let status = Command::new("ar")
-        .args(["rcs"])
-        .arg(format!("{}/libvault_security.a", out_dir))
-        .arg(format!("{}/vault_security.o", out_dir))
-        .arg(format!("{}/vault_ffi.o", out_dir))
+        .args(&ar_args)
         .status()
-        .expect("Falha ao criar libvault_security.a");
+        .expect("Failed to create libvault_security.a");
 
-    assert!(status.success(), "Criação da biblioteca estática falhou");
+    assert!(status.success(), "Static library creation failed");
 
-    // 4. Linkar para o Rust
+    // Link to Rust
     println!("cargo:rustc-link-search=native={}", out_dir);
     println!("cargo:rustc-link-lib=static=vault_security");
     println!("cargo:rustc-link-lib=ssl");
     println!("cargo:rustc-link-lib=crypto");
-    println!("cargo:rustc-link-lib=pthread");
 
-    // Recompilar se os arquivos C mudarem
-    println!("cargo:rerun-if-changed=c_src/vault_security.c");
-    println!("cargo:rerun-if-changed=c_src/vault_ffi.c");
-    println!("cargo:rerun-if-changed=c_src/vault_ffi.h");
+    #[cfg(target_os = "linux")]
+    {
+        println!("cargo:rustc-link-lib=pthread");
+        println!("cargo:rustc-link-lib=seccomp");
+        println!("cargo:rustc-link-lib=cap");
+    }
+
+    // Recompile if C sources change
+    println!("cargo:rerun-if-changed=c_src/vault_core.h");
+    for src in &c_sources {
+        println!("cargo:rerun-if-changed={}", src);
+    }
 }

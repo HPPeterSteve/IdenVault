@@ -1,25 +1,19 @@
 /*
  * vault.rs
  *
- * Integração Rust ↔ C (vault_security.c)
+ * Integração Rust ↔ C (vault core — split modules)
  * Autor: Peter Steve
  *
- * Expõe via FFI as funções do core C:
- *   - vault_create_ffi
- *   - vault_delete_ffi
- *   - vault_rename_ffi
- *   - vault_unlock_ffi
- *   - vault_encrypt_ffi
- *   - vault_decrypt_ffi
- *   - vault_scan_ffi
- *   - vault_resolve_ffi
- *   - vault_info_ffi
- *   - vault_list_ffi
- *   - vault_files_ffi
- *   - vault_sandbox_ffi
- *   - vault_rule_ffi
- *   - vault_change_password_ffi
- *   - vault_status_ffi (get_vault_status local)
+ * Core C split em 5 arquivos:
+ *   vault_crypto.c   — AES-256-GCM, PBKDF2, SHA-256, logging
+ *   vault_catalog.c  — hashmap, catalog save/load, vault CRUD
+ *   vault_monitor.c  — inotify, alertas, rules, monitor thread
+ *   vault_sandbox.c  — sandbox v2 (Linux) / stub (Windows)
+ *   vault_ffi.c      — wrappers FFI + init/shutdown
+ *
+ * Expõe via FFI:
+ *   - vault_ffi_init / vault_ffi_shutdown (lifecycle)
+ *   - vault_create_ffi ... vault_rule_ffi (operations)
  *
  * As funções originais do Rust (isolate_directory, create, add_file,
  * safe_copy, secure_store, read_directory, allow_write, remove_file,
@@ -48,6 +42,10 @@ use windows::Win32::Security::PSID;
  * ───────────────────────────────────────────────────────────────────────── */
 #[link(name = "vault_security", kind = "static")]
 unsafe extern "C" {
+    /* System lifecycle — MUST be called on startup/shutdown */
+    fn vault_ffi_init() -> c_int;
+    fn vault_ffi_shutdown() -> c_int;
+
     /* Vault lifecycle */
     fn vault_create_ffi(
         name:     *const c_char,
@@ -98,6 +96,7 @@ unsafe extern "C" {
 
     /* Vault status (retorna status code do vault: 0=OK,1=LOCKED,2=ALERT,3=DELETED) */
     fn vault_get_status_ffi(id: c_uint) -> c_int;
+    fn vault_export_file_ffi(id: c_uint, filename: *const c_char, dst_path: *const c_char) -> c_int;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -149,13 +148,31 @@ fn c_err(code: c_int) -> Result<(), String> {
         -7 => Err("Cofre já existe".to_string()),
         -8 => Err("Cofre não encontrado".to_string()),
         -9 => Err("Permissão negada".to_string()),
-        -10 => Err("Catálogo cheio (máx. 64 cofres)".to_string()),
+        -10 => Err("Catálogo cheio (máx. 2048 cofres)".to_string()),
         -11 => Err("Caminho inválido".to_string()),
         -12 => Err("Senha obrigatória para cofre protegido".to_string()),
         -13 => Err("Violação de integridade".to_string()),
         -14 => Err("Erro de sistema".to_string()),
         n   => Err(format!("Erro desconhecido (código {})", n)),
     }
+}
+
+/* 
+ *  SYSTEM LIFECYCLE — init/shutdown do core C
+ *  */
+
+/// Inicializa o subsistema C: carrega catálogo do disco, inicia monitor.
+/// Deve ser chamado UMA VEZ antes de qualquer outra operação vault.
+pub fn vault_init() -> Result<(), String> {
+    let code = unsafe { vault_ffi_init() };
+    c_err(code)
+}
+
+/// Encerra o subsistema C: salva catálogo no disco, para monitor, limpa memória.
+/// Deve ser chamado antes de sair (exit, Ctrl+C).
+pub fn vault_shutdown() -> Result<(), String> {
+    let code = unsafe { vault_ffi_shutdown() };
+    c_err(code)
 }
 
 /* 
@@ -270,6 +287,15 @@ pub fn vault_rule(
     let hf: c_int = hour_from.unwrap_or(-1);
     let ht: c_int = hour_to.unwrap_or(-1);
     let code = unsafe { vault_rule_ffi(vault_id, max_fails, hf, ht) };
+    c_err(code)
+}
+
+/// Exporta um arquivo do cofre para um destino externo via Core C (que chama o callback Rust).
+pub fn vault_export_file(id: u32, filename: &str, dst_path: &str) -> Result<(), String> {
+    let cs_file = to_cstring(filename, "filename")?;
+    let cs_dst  = to_cstring(dst_path, "dst_path")?;
+    
+    let code = unsafe { vault_export_file_ffi(id, cs_file.as_ptr(), cs_dst.as_ptr()) };
     c_err(code)
 }
 
@@ -525,6 +551,43 @@ pub fn read_directory(directory: &str) -> Vec<String> {
     }
 
     files
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ *  REVERSE FFI — Funções Rust chamadas pelo Core C
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/// Copia um arquivo usando a lógica Rust (safe_copy).
+/// Chamada pelo C para exportar arquivos do cofre ou adicionar arquivos externos.
+#[no_mangle]
+pub extern "C" fn rust_vault_copy_file(src: *const c_char, dst: *const c_char) -> c_int {
+    if src.is_null() || dst.is_null() { return -1; }
+
+    let s_src = unsafe { std::ffi::CStr::from_ptr(src) }.to_string_lossy();
+    let s_dst = unsafe { std::ffi::CStr::from_ptr(dst) }.to_string_lossy();
+
+    match safe_copy(s_src.as_ref(), s_dst.as_ref()) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("❌ [RUST CALLBACK] Erro em safe_copy: {}", e);
+            -3 // ERR_IO
+        }
+    }
+}
+
+/// Remove um arquivo usando fs::remove_file.
+#[no_mangle]
+pub extern "C" fn rust_vault_remove_file(path: *const c_char) -> c_int {
+    if path.is_null() { return -1; }
+    let s_path = unsafe { std::ffi::CStr::from_ptr(path) }.to_string_lossy();
+
+    match fs::remove_file(s_path.as_ref()) {
+        Ok(_) => 0,
+        Err(e) => {
+            eprintln!("❌ [RUST CALLBACK] Erro em remove_file: {}", e);
+            -3 // ERR_IO
+        }
+    }
 }
 
 #[allow(dead_code)]
