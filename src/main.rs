@@ -42,9 +42,6 @@ use std::path::PathBuf;
  *  Lista canônica de todos os comandos — usada pelo Levenshtein
  * ───────────────────────────────────────────────────────────────────────── */
 const ALL_COMMANDS: &[&str] = &[
-    /* originais */
-    "isolate-directory",
-    "create-vault",
     "safe-copy",
     "allow-write",
     "read-directory",
@@ -54,7 +51,6 @@ const ALL_COMMANDS: &[&str] = &[
     "encrypt",
     "decrypt",
     "secure-copy",
-    "run-in-sandbox",
     "system-information",
     "list-process-status",
     "derive-master-key",
@@ -79,53 +75,36 @@ const ALL_COMMANDS: &[&str] = &[
 ];
 
 fn show_help() {
-    println!(
-        "{}",
-        "
-Comandos disponíveis:
+    println!("{}", "\n─── IdenVault v0.8.15 ─────────────────────────────────────────".bright_yellow());
+    
+    println!("\n{}", "📦 GESTÃO DE COFRES".bold().cyan());
+    println!("  {:<25} → {}", "vault-list", "Lista todos os cofres no catálogo");
+    println!("  {:<25} → {}", "vault-create <n> <p> <t>", "Registra novo cofre (normal | protected)");
+    println!("  {:<25} → {}", "vault-info <id>", "Detalhes, metadados e integridade");
+    println!("  {:<25} → {}", "vault-rename <id> <nome>", "Altera o nome de exibição no catálogo");
+    println!("  {:<25} → {}", "vault-delete <id>", "Remove o registro do cofre");
 
-── Operações de arquivo / diretório ──────────────────────────────────────
-create-vault <path>        → cria um cofre (diretório)
-add-file <vault> <file>    → adiciona arquivo ao cofre
-safe-copy <src> <dst>      → copia com segurança
-allow-write <file>         → libera escrita
-read-directory <dir>       → lista arquivos
-isolate-directory <dir>    → isola diretório
-secure-copy <file> <vault> [pass] → protege e armazena (senha opcional)
-encrypt <file> [pass]      → criptografa arquivo (senha opcional)
-decrypt <file> [pass]      → descriptografa arquivo (senha opcional)
-remove-file <vault> <file> → remove arquivo do cofre
-status <vault|id>          → mostra status do cofre
-run-in-sandbox <dir>       → roda diretório em sandbox
+    println!("\n{}", "🔐 SEGURANÇA E ACESSO".bold().red());
+    println!("  {:<25} → {}", "vault-unlock <id>", "Desbloqueia o cofre após lockout");
+    println!("  {:<25} → {}", "vault-passwd <id>", "Altera a senha de acesso");
+    println!("  {:<25} → {}", "vault-encrypt <id>", "Criptografia em lote (AES-256-GCM)");
+    println!("  {:<25} → {}", "vault-decrypt <id>", "Descriptografia de arquivos");
+    println!("  {:<25} → {}", "vault-rule <id> <fails>", "Define regras de falhas e horários");
+    println!("  {:<25} → {}", "vault-scan / resolve", "Força varredura ou resolve alertas ativos");
 
-── Core C — Vault Security System ────────────────────────────────────────
-vault-list                             → lista todos os cofres (catálogo)
-vault-create <name> <path> <type>      → cria cofre no core C
-  type: normal | protected
-vault-delete  <id>                     → deleta cofre pelo ID
-vault-rename  <id> <new_name>          → renomeia cofre
-vault-unlock  <id>                     → desbloqueia cofre após lockout
-vault-passwd  <id>                     → troca senha do cofre
-vault-encrypt <id>                     → criptografa arquivos (AES-256)
-vault-decrypt <id>                     → descriptografa arquivos
-vault-scan    <id>                     → força varredura de integridade
-vault-resolve <id>                     → resolve alerta ativo
-vault-info    <id>                     → detalhes do cofre
-vault-files   <id>                     → lista arquivos rastreados
-vault-sandbox <id>                     → abre cofre em shell sandbox
-vault-rule    <id> <max_fails> [h_from h_to]  → adiciona regra de segurança
-vault-export  <id> <file> <dst>              → exporta arquivo do cofre
+    println!("\n{}", "📂 OPERAÇÕES DE ARQUIVO".bold().blue());
+    println!("  {:<25} → {}", "add-file <path> <file>", "Adiciona arquivo físico ao diretório");
+    println!("  {:<25} → {}", "vault-export <id> <f> <d>", "Extrai arquivo do cofre para destino");
+    println!("  {:<25} → {}", "remove-file <v> <f>", "Remove arquivo do diretório");
+    println!("  {:<25} → {}", "status <id>", "Status em tempo real e lista de arquivos");
+    println!("  {:<25} → {}", "vault-sandbox <id>", "Inicia ambiente isolado (Linux)");
 
-── Sistema ───────────────────────────────────────────────────────────────
-system-information [cpu] [memory] [disks] [networks] [processes]
-list-process-status        → lista status dos processos ativos
-derive-master-key          → deriva master key (senha + chave USB)
+    println!("\n{}", "💻 SISTEMA E UTILITÁRIOS".bold().white());
+    println!("  {:<25} → {}", "system-information", "Diagnóstico de hardware e processos");
+    println!("  {:<25} → {}", "derive-master-key", "Gera chave mestra via USB/Senha");
+    println!("  {:<25} → {}", "help / exit", "Ajuda do sistema ou encerrar");
 
-help                       → esta ajuda
-exit                       → sair
-"
-        .cyan()
-    );
+    println!("{}", "\n───────────────────────────────────────────────────────────────".bright_yellow());
 }
 
 fn get_password(prompt_text: &str, provided_pass: Option<&&str>) -> String {
@@ -167,6 +146,42 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
     }
 
     costs[b.len()]
+}
+
+/// Helper para dividir a linha de comando respeitando aspas (ex: "Cofre do Pedro")
+fn parse_args(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut quote_char = ' ';
+
+    for c in input.chars() {
+        if in_quotes {
+            if c == quote_char {
+                in_quotes = false;
+                args.push(current.clone());
+                current.clear();
+            } else {
+                current.push(c);
+            }
+        } else {
+            if c == '"' || c == '\'' {
+                in_quotes = true;
+                quote_char = c;
+            } else if c.is_whitespace() {
+                if !current.is_empty() {
+                    args.push(current.clone());
+                    current.clear();
+                }
+            } else {
+                current.push(c);
+            }
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+    args
 }
 
 /// Encontra o comando mais próximo pelo Levenshtein.
@@ -216,31 +231,21 @@ fn prompt_password_opt(label: &str) -> Option<String> {
 /* 
  *  DISPATCHER DE COMANDOS
  *  */
-fn handle_command(parts: Vec<&str>) {
+fn handle_command(parts: Vec<&str>) -> bool {
     match parts[0] {
 
-        /* ── originais ────────────────────────────────────────────────── */
-
-        "isolate-directory" => {
-            if let Some(dir) = path_assistant::ensure_path(parts.get(1), "Diretório para isolar:", true) {
-                log::info(&format!("Isolando diretório: {:?}", dir));
-                vault::isolate_directory(dir.to_str().unwrap());
-            }
+        "help" => {
+            show_help();
         }
 
-        "create-vault" => {
-            let path = if let Some(p) = parts.get(1) {
-                PathBuf::from(p)
-            } else {
-                let input = inquire::Text::new("Caminho para o novo cofre:").prompt().unwrap_or_default();
-                PathBuf::from(input)
-            };
-
-            if !path.as_os_str().is_empty() {
-                log::info(&format!("Criando cofre em: {:?}", path));
-                vault::create(path.to_str().unwrap());
-                println!("{}", "✔ Cofre criado".green());
+        "exit" | "quit" => {
+            println!("{}", "Salvando catálogo e encerrando...".yellow());
+            match vault::vault_shutdown() {
+                Ok(()) => log::info("Catálogo salvo com sucesso."),
+                Err(e) => eprintln!("⚠ Erro ao salvar: {}", e),
             }
+            log::info("Aplicação encerrada pelo usuário.");
+            return true; // Sinaliza saída
         }
 
         "safe-copy" => {
@@ -454,11 +459,30 @@ fn handle_command(parts: Vec<&str>) {
             vault::vault_list();
         }
 
-        /* vault-create <name> <path> <type> */
+        /* vault-create <name> [path] [type] */
         "vault-create" => {
-            let name      = parts.get(1).map(|s| *s);
-            let path      = parts.get(2).map(|s| *s);
-            let vtype_str = parts.get(3).copied().unwrap_or("normal");
+            let arg1 = parts.get(1).copied();
+            let arg2 = parts.get(2).copied();
+            let arg3 = parts.get(3).copied();
+
+            let mut name = arg1;
+            let mut path = None;
+            let mut vtype_str = "normal";
+
+            // Lógica inteligente: se arg2 for um tipo, então path é pulado
+            if let Some(a2) = arg2 {
+                if a2 == "normal" || a2 == "protected" {
+                    vtype_str = a2;
+                } else {
+                    path = Some(a2);
+                    if let Some(a3) = arg3 {
+                        vtype_str = a3;
+                    }
+                }
+            }
+
+            // Se o usuário digitou "auto" no nome, tratamos como None para o C gerar
+            if name == Some("auto") { name = None; }
 
             let password = if vtype_str == "protected" {
                 let p1 = prompt_password("Senha do cofre:");
@@ -598,7 +622,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-decrypt id={}", id));
             match vault::vault_decrypt(id, &pass) {
-                Ok(_)  => println!("{}", "✔ Arquivos descriptografados.".green()),
+                Ok(_)  => println!("{}", "✔ Arquivo descriptografado.".green()),
                 Err(e) => {
                     log::error(&format!("vault-decrypt: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -739,6 +763,7 @@ fn handle_command(parts: Vec<&str>) {
             }
         }
     }
+    false // Não sinaliza saída
 }
 
 /* 
@@ -788,29 +813,33 @@ fn main() {
     .expect("Erro ao definir handler");
 
     loop {
-        let readline = rl.readline(&"VaranusCore> ".bright_blue().to_string());
+        let readline = rl.readline(&"IdenVault> ".bright_blue().to_string());
 
         match readline {
-            Ok(line) => {
-                rl.add_history_entry(line.as_str()).ok();
-                let input = line.trim();
-                if input.is_empty() {
-                    continue;
-                }
+            Ok(input) => {
+                let input = input.trim();
+                if input.is_empty() { continue; }
+                rl.add_history_entry(input).ok();
 
-                /* Comando 'quit' / 'exit' → shutdown graceful */
-                if input == "quit" || input == "exit" {
-                    println!("{}", "Salvando catálogo e encerrando...".yellow());
-                    match vault::vault_shutdown() {
-                        Ok(()) => log::info("Catálogo salvo com sucesso."),
-                        Err(e) => eprintln!("⚠ Erro ao salvar: {}", e),
+                // Suporte a múltiplos comandos separados por ';'
+                let commands: Vec<&str> = input.split(';').collect();
+                let mut should_exit = false;
+
+                for cmd in commands {
+                    let cmd_trimmed = cmd.trim();
+                    if cmd_trimmed.is_empty() { continue; }
+
+                    let args = parse_args(cmd_trimmed);
+                    if args.is_empty() { continue; }
+
+                    let parts: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+                    if handle_command(parts) {
+                        should_exit = true;
+                        break;
                     }
-                    log::info("Aplicação encerrada pelo usuário.");
-                    break;
                 }
 
-                let parts: Vec<&str> = input.split_whitespace().collect();
-                handle_command(parts);
+                if should_exit { break; }
             }
 
             Err(ReadlineError::Eof) => {

@@ -6,7 +6,7 @@ build = "build.rs"
 
 
 [[bin]]
-name = "VaranusCore"
+name = "IdenVault"
 path = "src/main.rs"
 
 [dependencies]

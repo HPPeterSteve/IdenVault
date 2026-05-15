@@ -1,18 +1,11 @@
 
 #[allow(dead_code)]
 
-#[cfg(windows)]
-use windows::Win32::Security::PSID;
 
 use sysinfo::{
      Disks, Networks, System,
 };
 
-#[cfg(windows)]
-unsafe extern "C" {
-    fn setup_app_container(container_name: *const i8, pSid: *mut PSID) -> bool;
-    fn try_hard_isolate(executable_path: *const i8) -> bool;
-}
 /// Lista todos os processos ativos com detalhes de consumo e status de isolamento
 pub fn list_process_status(options: &SystemOptions) {
     let mut sys = System::new_all();
@@ -46,29 +39,6 @@ pub fn list_process_status(options: &SystemOptions) {
         }
     }
 }
-#[cfg(windows)]
-pub fn check_setup_app_container_and_try_hard_isolate() {
-    let container_name = format!("KomodoSandbox_{}", std::process::id());
-    let mut sid = PSID(std::ptr::null_mut());
-
-    unsafe {
-        if setup_app_container(container_name.as_ptr() as *const i8, &mut sid) {
-            println!("✅ AppContainer '{}' configurado com sucesso", container_name);
-            println!("SID do AppContainer: {:?}", sid);
-        } else {
-            eprintln!("❌ Falha ao configurar AppContainer '{}'", container_name);
-        }
-    }
-    
-    let try_hard_isolate_result =  format!("Resultado de try_hard_isolate: {}", 
-    unsafe { try_hard_isolate(container_name.as_ptr() as *const i8) });
-    println!("{}", try_hard_isolate_result);
-}
-
-#[cfg(not(windows))]
-pub fn check_setup_app_container_and_try_hard_isolate() {
-    println!("⚠️  AppContainer é específico do Windows. Executando em Linux.");
-}
 
 // Função utilitária para converter MB → KB
 fn mb_to_kb_binary(mb: f64) -> f64 {
@@ -90,7 +60,7 @@ pub fn system_information(options: SystemOptions) {
     let mut sys_info = System::new_all();
     sys_info.refresh_all();
 
-    println!("--- System VaranusCore ---");
+    println!("--- System IdenVault ---");
 
     // CPU
     if options.cpu {

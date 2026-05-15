@@ -33,8 +33,6 @@ use std::{
 
 use std::ffi::{c_char, c_int, c_uint, CString};
 
-#[cfg(target_os = "windows")]
-use windows::Win32::Security::PSID;
 
 /* ─────────────────────────────────────────────────────────────────────────
  *  FFI — símbolos exportados por vault_security.c
@@ -103,12 +101,6 @@ unsafe extern "C" {
 /* ─────────────────────────────────────────────────────────────────────────
  *  Sandbox — Windows AppContainer (mantido igual ao original)
  * ───────────────────────────────────────────────────────────────────────── */
-#[cfg(target_os = "windows")]
-#[link(name = "sandbox", kind = "static")]
-unsafe extern "C" {
-    pub fn setup_app_container(container_name: *const c_char, pSid: *mut PSID) -> bool;
-    pub fn try_hard_isolate(app_path: *const c_char) -> bool;
-}
 
 /* ─────────────────────────────────────────────────────────────────────────
  *  Helpers internos
@@ -309,135 +301,6 @@ pub fn vault_export_file(id: u32, filename: &str, dst_path: &str) -> Result<(), 
  *  FUNÇÕES ORIGINAIS RUST — mantidas integralmente, sem renomear nada
  *  */
 
-/// Função que o main.rs está tentando chamar (Windows AppContainer sandbox).
-pub fn run_in_sandbox(path: &str) {
-    println!("🛡️ VaranusCore: Iniciando isolamento para {}", path);
-
-    let c_path = match CString::new(path) {
-        Ok(s) => s,
-        Err(_) => {
-            eprintln!("❌ Falha ao converter caminho para CString: {}", path);
-            return;
-        }
-    };
-
-    #[cfg(target_os = "windows")]
-    unsafe {
-        let container_name = format!("KomodoSandbox_{}", std::process::id());
-        let c_container_name = match CString::new(container_name.clone()) {
-            Ok(s) => s,
-            Err(_) => {
-                eprintln!("❌ Falha ao criar nome do AppContainer");
-                return;
-            }
-        };
-
-        let mut sid = PSID(std::ptr::null_mut());
-
-        if setup_app_container(c_container_name.as_ptr(), &mut sid) {
-            println!("✅ AppContainer '{}' configurado com sucesso", container_name);
-            println!("SID do AppContainer: {:?}", sid);
-
-            if try_hard_isolate(c_path.as_ptr()) {
-                println!("✅ Processo isolado com sucesso (Sandbox + Firewall + Desktop)");
-            } else {
-                eprintln!("❌ Falha ao aplicar isolamento de segurança.");
-            }
-        } else {
-            eprintln!("❌ Falha ao configurar AppContainer '{}'", container_name);
-        }
-    }
-
-    /* Em Linux o sandbox é tratado pelo vault_sandbox() via core C (chroot/fork). */
-    #[cfg(not(target_os = "windows"))]
-    {
-        eprintln!(
-            "ℹ️  run_in_sandbox: no Linux use 'sandbox <id>' para isolamento via core C (chroot/fork)."
-        );
-        let _ = c_path; /* evita warning de variável não usada */
-    }
-}
-
-pub fn isolate_directory(directory: &str) {
-    let home_dir = home::home_dir().unwrap_or_default();
-    let sandbox_path = home_dir.join("Komodo_SEC").join("sandbox");
-
-    let files = read_directory(directory);
-    let dir_sandbox = Path::new(&sandbox_path);
-
-    if !dir_sandbox.exists() {
-        if let Err(e) = std::fs::create_dir_all(&sandbox_path) {
-            eprintln!("Falha ao criar diretório sandbox: {}", e);
-            return;
-        }
-    }
-
-    let full_path = dir_sandbox.join(directory);
-    if !full_path.exists() {
-        if let Err(e) = std::fs::create_dir_all(&full_path) {
-            eprintln!("Falha ao criar subdiretório sandbox: {}", e);
-            return;
-        }
-    }
-
-    let c_path = match CString::new(directory) {
-        Ok(p) => p,
-        Err(_) => {
-            eprintln!("Caminho inválido para FFI (contém byte nulo?)");
-            return;
-        }
-    };
-
-    println!("Tentando isolamento avançado (mount namespace + readonly)...");
-
-    /* No Linux delegamos ao core C */
-    #[cfg(not(target_os = "windows"))]
-    let isolated = {
-        /* vault_sandbox_ffi com id=0 não faz sentido; isolate_directory mantém
-         * sua lógica Rust original — apenas tenta via try_hard_isolate se disponível.
-         * Como no Linux não temos AppContainer, simplesmente prosseguimos com
-         * o fallback readonly abaixo. */
-        let _ = c_path;
-        false
-    };
-
-    #[cfg(target_os = "windows")]
-    let isolated = unsafe { try_hard_isolate(c_path.as_ptr()) };
-
-    if isolated {
-        println!("Isolamento forte aplicado (namespace + readonly)");
-    } else {
-        println!("Isolamento namespace falhou (provável falta de privilégio)");
-        println!("Aplicando isolamento básico (readonly)...");
-    }
-
-    println!("Isolando diretório {}", directory);
-    println!("Arquivos encontrados:");
-
-    for file in files {
-        println!(" - {}", file);
-    }
-
-    if let Ok(metadata) = fs::metadata(directory) {
-        let mut permission = metadata.permissions();
-        permission.set_readonly(true);
-        if let Err(e) = fs::set_permissions(directory, permission) {
-            eprintln!("Falha ao aplicar permissão readonly: {}", e);
-        } else {
-            println!("Permissão readonly aplicada com sucesso (fallback)");
-        }
-    } else {
-        eprintln!("Não foi possível ler metadados do diretório");
-    }
-}
-
-pub fn create(dir: &str) {
-    if let Err(e) = std::fs::create_dir_all(dir) {
-        eprintln!("Erro ao criar cofre: {}", e);
-    } else {
-        println!("Cofre criado com sucesso em {}", dir);
-    }
-}
 
 pub fn add_file(vault: &str, file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let vault_path = Path::new(vault);
