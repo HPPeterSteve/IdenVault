@@ -420,7 +420,7 @@ fn handle_command(parts: Vec<&str>) -> bool {
                 Err(e) => {
                     log::error(&format!("Erro ao decodificar chave USB: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
-                    return;
+                    return false;
                 }
             };
 
@@ -488,12 +488,12 @@ fn handle_command(parts: Vec<&str>) -> bool {
                 let p1 = prompt_password("Senha do cofre:");
                 if p1.is_empty() {
                     eprintln!("{}", "✖ Senha obrigatória para cofre protegido.".red());
-                    return;
+                    return false;
                 }
                 let p2 = prompt_password("Confirme a senha:");
                 if p1 != p2 {
                     eprintln!("{}", "✖ Senhas não coincidem.".red());
-                    return;
+                    return false;
                 }
                 Some(p1)
             } else {
@@ -512,7 +512,7 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-delete <id> */
         "vault-delete" => {
-            let Some(id) = parse_id(parts.get(1), "vault-delete") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-delete") else { return false };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-delete id={}", id));
@@ -527,12 +527,12 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-rename <id> <new_name> */
         "vault-rename" => {
-            let Some(id) = parse_id(parts.get(1), "vault-rename") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-rename") else { return false };
             let new_name = match parts.get(2) {
                 Some(n) => *n,
                 None => {
                     eprintln!("{}", "✖ vault-rename: novo nome obrigatório.".red());
-                    return;
+                    return false;
                 }
             };
             let pass = prompt_password_opt("Senha (Enter para pular):");
@@ -549,11 +549,11 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-unlock <id> */
         "vault-unlock" => {
-            let Some(id) = parse_id(parts.get(1), "vault-unlock") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-unlock") else { return false };
             let pass = prompt_password("Senha:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para desbloquear.".red());
-                return;
+                return false;
             }
 
             log::info(&format!("vault-unlock id={}", id));
@@ -568,18 +568,18 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-passwd <id> */
         "vault-passwd" => {
-            let Some(id) = parse_id(parts.get(1), "vault-passwd") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-passwd") else { return false };
             let old_pass = prompt_password("Senha atual:");
             let new_pass = prompt_password("Nova senha:");
             let cnf_pass = prompt_password("Confirme nova senha:");
 
             if new_pass != cnf_pass {
                 eprintln!("{}", "✖ Senhas não coincidem.".red());
-                return;
+                return false;
             }
             if new_pass.is_empty() {
                 eprintln!("{}", "✖ Nova senha não pode ser vazia.".red());
-                return;
+                return false;
             }
 
             log::info(&format!("vault-passwd id={}", id));
@@ -594,11 +594,11 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-encrypt <id> */
         "vault-encrypt" => {
-            let Some(id) = parse_id(parts.get(1), "vault-encrypt") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-encrypt") else { return false };
             let pass = prompt_password("Senha do cofre:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para criptografar.".red());
-                return;
+                return false;
             }
 
             log::info(&format!("vault-encrypt id={}", id));
@@ -613,11 +613,11 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-decrypt <id> */
         "vault-decrypt" => {
-            let Some(id) = parse_id(parts.get(1), "vault-decrypt") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-decrypt") else { return false };
             let pass = prompt_password("Senha do cofre:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para descriptografar.".red());
-                return;
+                return false;
             }
 
             log::info(&format!("vault-decrypt id={}", id));
@@ -632,7 +632,7 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-scan <id> */
         "vault-scan" => {
-            let Some(id) = parse_id(parts.get(1), "vault-scan") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-scan") else { return false };
             log::info(&format!("vault-scan id={}", id));
             match vault::vault_scan(id) {
                 Ok(_)  => println!("{}", "✔ Varredura concluída.".green()),
@@ -645,7 +645,7 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-resolve <id> */
         "vault-resolve" => {
-            let Some(id) = parse_id(parts.get(1), "vault-resolve") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-resolve") else { return false };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-resolve id={}", id));
@@ -660,21 +660,21 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-info <id> */
         "vault-info" => {
-            let Some(id) = parse_id(parts.get(1), "vault-info") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-info") else { return false };
             log::info(&format!("vault-info id={}", id));
             vault::vault_info(id);
         }
 
         /* vault-files <id> */
         "vault-files" => {
-            let Some(id) = parse_id(parts.get(1), "vault-files") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-files") else { return false };
             log::info(&format!("vault-files id={}", id));
             vault::vault_files(id);
         }
 
         /* vault-sandbox <id> */
         "vault-sandbox" => {
-            let Some(id) = parse_id(parts.get(1), "vault-sandbox") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-sandbox") else { return false };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-sandbox id={}", id));
@@ -689,18 +689,18 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-rule <id> <max_fails> [hour_from hour_to] */
         "vault-rule" => {
-            let Some(id) = parse_id(parts.get(1), "vault-rule") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-rule") else { return false };
             let max_fails: i32 = match parts.get(2) {
                 Some(v) => match v.parse() {
                     Ok(n) => n,
                     Err(_) => {
                         eprintln!("{}", "✖ vault-rule: max_fails deve ser inteiro.".red());
-                        return;
+                        return false;
                     }
                 },
                 None => {
                     eprintln!("{}", "✖ vault-rule: max_fails obrigatório.".red());
-                    return;
+                    return false;
                 }
             };
 
@@ -723,7 +723,7 @@ fn handle_command(parts: Vec<&str>) -> bool {
 
         /* vault-export <id> <file> <dst> */
         "vault-export" => {
-            let Some(id) = parse_id(parts.get(1), "vault-export") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-export") else { return false };
             let filename = parts.get(2).map(|s| *s);
             let dst_path = parts.get(3).map(|s| *s);
 
