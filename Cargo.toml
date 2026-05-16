@@ -1,12 +1,12 @@
 [package]
-name = "FridgeVault"
-version = "0.8.11"
+name = "IdenVault"
+version = "0.9.0"
 edition = "2021"
 build = "build.rs"
 
 
 [[bin]]
-name = "VaranusCore"
+name = "IdenVault"
 path = "src/main.rs"
 
 [dependencies]
