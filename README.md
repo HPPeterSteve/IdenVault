@@ -1,6 +1,6 @@
-# Idencrypt
+# IdenVault
 
-**Komodo Core** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
+**IdenVault** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
 
 Written in **C** (security core) and **Rust** (CLI layer), it provides cryptographic file protection and kernel-level process sandboxing — extracting the full isolation capability of the Linux kernel rather than relying on userspace abstractions.
 
