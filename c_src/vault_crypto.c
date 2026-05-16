@@ -37,8 +37,8 @@ static const char *log_level_str(LogLevel lvl) {
 void vault_log(LogLevel lvl, const char *fmt, ...) {
     char    timebuf[32];
     time_t  now = time(NULL);
-    struct  tm *tm_info = localtime(&now);
-    strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", tm_info);
+    struct  tm *temp_info = localtime(&now);
+    strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", temp_info);
 
     va_list ap;
     va_start(ap, fmt);
@@ -199,7 +199,7 @@ void sha256_hex(const uint8_t *data, size_t len, char out[HASH_HEX_LEN]) {
 VaultError sha256_file(const char *path, char out[HASH_HEX_LEN]) {
     FILE *fp = fopen(path, "rb");
     if (!fp) return ERR_IO;
-
+    
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     if (!ctx) { fclose(fp); return ERR_CRYPTO; }
 

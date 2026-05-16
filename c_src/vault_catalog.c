@@ -16,6 +16,7 @@
 
 #include "vault_core.h"
 
+
 /* ─────────────────────────────────────────────
  *  GLOBALS (defined here, extern'd in vault_core.h)
  * ───────────────────────────────────────────── */
