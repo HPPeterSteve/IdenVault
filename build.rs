@@ -22,8 +22,8 @@ fn main() {
         // ←←← MUDE AQUI para o caminho correto da sua logo
         res.set_icon("img/VaranusCore.ico");    
         
-        res.set("FileDescription", "Komodo Secure - Vault Security System");
-        res.set("ProductName", "VaranusCore");
+        res.set("FileDescription", "IdenVault - Vault Security System");
+        res.set("ProductName", "IdenVault");
         res.set("CompanyName", "Pedrão Projects");
         res.set("LegalCopyright", "© 2026 Pedrão");
         res.set("FileVersion", env!("CARGO_PKG_VERSION"));
