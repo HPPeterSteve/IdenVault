@@ -73,8 +73,7 @@ fn main() {
         ];
 
         // On Linux, add include paths for OpenSSL, seccomp, etc.
-        #[cfg(target_os = "linux")]
-        {
+        if cfg!(target_os = "linux") {
             gcc_args.push("-pthread".to_string());
         }
 
