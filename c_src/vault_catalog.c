@@ -169,7 +169,7 @@ VaultError catalog_load(void) {
     }
 
     char magic[5] = {0};
-    if (fread(magic, 1, 4, fp) != 4 || memcmp(magic, CATALOG_MAGIC, 4) != 0) {
+    if (fread(magic, 1, 4, fp) != 4 || CRYPTO_memcmp(magic, CATALOG_MAGIC, 4) != 0) {
         fclose(fp);
         vault_log(LOG_ERROR, "Catalog file corrupt or wrong format");
         return ERR_IO;
@@ -353,17 +353,19 @@ VaultError vault_create(const char *name_arg, VaultType type,
     vault_enforce_readonly(v); // Start protected
     err = catalog_save();
 
-    vault_log(LOG_AUDIT, "Vault CREATED: id=%u name='%s' type=%s path='%s'",
+    vault_log(LOG_AUDIT, "Vault CREATED: id=%u name='%s' type=%s path='%s' (%s)",
               v->id, v->name,
               type == VAULT_TYPE_PROTECTED ? "PROTECTED" : "NORMAL",
-              v->path);
+              v->path,
+              v->has_pass ? "with password" : "no password");
 
     printf("\n  ✓ Vault created successfully\n");
     printf("    ID   : %u\n", v->id);
     printf("    Name : %s\n", v->name);
+    printf("    Path : %s\n", v->path);
+    printf("    Total vaults: %u\n\n", g_catalog.count);
+    printf("    Has password: %s\n", v->has_pass ? "Yes" : "No");
     printf("    Type : %s\n", type == VAULT_TYPE_PROTECTED ? "PROTECTED" : "NORMAL");
-    printf("    Path : %s\n\n", v->path);
-
     return err;
 }
 

@@ -208,6 +208,8 @@ typedef struct {
 
     /* Protection */
     bool        write_mode;  /* True only during authorized write operations */
+    volatile int authorized_ops;  /* >0 = internal op in progress (encrypt, add, etc.) */
+    time_t      authorized_op_end; /* timestamp of last authorized op end (grace period) */
 } Vault;
 
 /* Catalog: flat array of vaults */
@@ -361,6 +363,10 @@ int vault_sandbox_ffi(uint32_t id, const char *password);
 int vault_rule_ffi(uint32_t vault_id, int max_fails, int hour_from, int hour_to);
 int vault_get_status_ffi(uint32_t id);
 int vault_export_file_ffi(uint32_t id, const char *filename, const char *dst_path);
+void vault_begin_authorized_op_ffi(uint32_t id);
+void vault_end_authorized_op_ffi(uint32_t id);
+void vault_authorize_path_ffi(const char *path);
+void vault_deauthorize_path_ffi(const char *path);
 
 #ifdef __cplusplus
 }

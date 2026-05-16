@@ -96,6 +96,12 @@ unsafe extern "C" {
     fn vault_get_status_ffi(id: c_uint) -> c_int;
     fn vault_export_file_ffi(id: c_uint, filename: *const c_char, dst_path: *const c_char) -> c_int;
     fn vault_trust_process_ffi(pid: c_int);
+
+    /* Authorized ops — sinaliza operações internas para o monitor inotify */
+    fn vault_begin_authorized_op_ffi(id: c_uint);
+    fn vault_end_authorized_op_ffi(id: c_uint);
+    fn vault_authorize_path_ffi(path: *const c_char);
+    fn vault_deauthorize_path_ffi(path: *const c_char);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -297,6 +303,29 @@ pub fn vault_export_file(id: u32, filename: &str, dst_path: &str) -> Result<(), 
     c_err(code)
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+ *  AUTHORIZED OPS — Sinaliza ao monitor inotify que uma operação interna
+ *  está em andamento, evitando falsos positivos de "ransomware".
+ *
+ *  authorize_path / deauthorize_path: busca o vault pelo path no catálogo C.
+ *  Usado por add_file, remove_file, secure_store — funções Rust que
+ *  escrevem diretamente no diretório do cofre sem passar pelo FFI.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/// Sinaliza ao monitor que uma operação autorizada está começando no vault com esse path.
+fn authorize_path(path: &str) {
+    if let Ok(cs) = CString::new(path) {
+        unsafe { vault_authorize_path_ffi(cs.as_ptr()) }
+    }
+}
+
+/// Sinaliza ao monitor que a operação autorizada terminou.
+fn deauthorize_path(path: &str) {
+    if let Ok(cs) = CString::new(path) {
+        unsafe { vault_deauthorize_path_ffi(cs.as_ptr()) }
+    }
+}
+
 /* 
  *  FUNÇÕES ORIGINAIS RUST — mantidas integralmente, sem renomear nada
  *  */
@@ -324,7 +353,12 @@ pub fn add_file(vault: &str, file: &str) -> Result<(), Box<dyn std::error::Error
         return Ok(());
     }
 
-    let bytes = fs::copy(file_path, &destination)?;
+    // Sinaliza ao monitor C que estamos escrevendo (evita falso alerta)
+    authorize_path(vault);
+    let result = fs::copy(file_path, &destination);
+    deauthorize_path(vault);
+
+    let bytes = result?;
 
     println!(
         "Arquivo adicionado ao cofre: {}\nBytes copiados: {}",
@@ -377,18 +411,25 @@ pub fn secure_store(src: &str, vault: &str, password: &str) {
     };
     let destination = vault_path.join(file_name);
 
+    // Sinaliza ao monitor C que estamos escrevendo
+    authorize_path(vault);
+
     if let Err(e) = safe_copy(source, &destination) {
+        deauthorize_path(vault);
         eprintln!("Erro ao copiar arquivo para o cofre: {}", e);
         return;
     }
     let destination_in_vault = destination;
 
     if let Err(e) = crate::crypto::encrypt_file(&destination_in_vault, password) {
+        deauthorize_path(vault);
         eprintln!("Erro ao criptografar arquivo no cofre: {}", e);
         return;
     }
     let _ = fs::remove_file(&destination_in_vault);
     let _ = fs::remove_file(source);
+
+    deauthorize_path(vault);
 }
 
 pub fn read_directory(directory: &str) -> Vec<String> {
@@ -487,7 +528,12 @@ pub fn remove_file(vault: &str, file_name: &str) -> Result<(), Box<dyn std::erro
         ).into());
     }
 
-    fs::remove_file(file_path)?;
+    // Sinaliza ao monitor C que estamos deletando
+    authorize_path(vault);
+    let result = fs::remove_file(&file_path);
+    deauthorize_path(vault);
+
+    result?;
     println!("✔ Arquivo '{}' removido do cofre '{}'", file_name, vault);
     Ok(())
 }

@@ -22,10 +22,155 @@
 #ifdef __linux__
 #include <sys/sysmacros.h>
 
+#define stack_size (1024 * 1024) /* 1 MiB for monitor thread stack */
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_drop_caps(): Remove all Linux Capabilities
  * ───────────────────────────────────────────────────────────────────────── */
-static int sandbox_drop_caps(void) {
+// var: cap_t empty = cap_init();
+static int pivot_root_wrap(const char *new_root, const char *put_old)
+{
+    if (!new_root || !put_old || new_root[0] == '\0' || put_old[0] == '\0') {
+        fprintf(stderr, "[SANDBOX] invalid pivot_root args\n");
+        return -1;
+    }
+
+    return syscall(SYS_pivot_root, new_root, put_old);
+}
+
+static int setup_user_ns(void)
+{
+    if (unshare(CLONE_NEWUSER) != 0) {
+        perror("unshare(CLONE_NEWUSER)");
+        return -1;
+    }
+
+    FILE *setgroups = fopen("/proc/self/setgroups", "w");
+    if (setgroups) {
+        fprintf(setgroups, "deny\n");
+        fclose(setgroups);
+    }
+
+    FILE *uid_map = fopen("/proc/self/uid_map", "w");
+    if (!uid_map) return -1;
+    fprintf(uid_map, "0 %d 1\n", getuid());
+    fclose(uid_map);
+
+    FILE *gid_map = fopen("/proc/self/gid_map", "w");
+    if (!gid_map) return -1;
+    fprintf(gid_map, "0 %d 1\n", getgid());
+    fclose(gid_map);
+
+    return 0;
+}
+
+static int setup_mount_ns(void)
+{
+    if (unshare(CLONE_NEWNS) != 0) {
+        perror("unshare(CLONE_NEWNS)");
+        return -1;
+    }
+
+    if (mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0) {
+        perror("mount MS_PRIVATE");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int sandbox_child(char *new_root)
+{
+    // bind mount obrigatório para pivot_root funcionar
+    if (mount(new_root, new_root, NULL, MS_BIND | MS_REC, NULL) != 0) {
+        perror("bind mount");
+        return -1;
+    }
+
+    if (chdir(new_root) != 0) {
+        perror("chdir new_root");
+        return -1;
+    }
+
+    if (mkdir(".oldroot", 0700) != 0 && errno != EEXIST) {
+        perror("mkdir oldroot");
+        return -1;
+    }
+
+    if (pivot_root_wrap(".", ".oldroot") != 0) {
+        perror("pivot_root");
+        return -1;
+    }
+
+    chdir("/");
+
+    umount2("/.oldroot", MNT_DETACH);
+
+    if (rmdir("/.oldroot") != 0) {
+        perror("rmdir /.oldroot");
+        // Not fatal, continue
+    }
+    
+    // Mount minimal /proc for compatibility (some apps require it)
+    if (mount("proc", "/proc", "proc", MS_NOSUID | MS_NOEXEC | MS_NODEV, NULL) != 0) {
+        perror("mount proc");
+        return -1;
+    }
+
+    // drop capabilities
+    cap_t empty = cap_init();
+    if (!empty) {
+        perror("cap_init");
+        return -1;
+    }
+
+    if (cap_set_proc(empty) != 0) {
+        perror("cap_set_proc");
+        cap_free(empty);
+        return -1;
+    }
+    cap_free(empty);
+
+    // impede elevação de privilégios
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+        perror("prctl(PR_SET_NO_NEW_PRIVS)");
+        return -1;
+    }
+
+    return 0;
+}
+
+int sandbox_run(char *new_root)
+{
+    // 1. identidade isolada
+    if (setup_user_ns() != 0)
+        return -1;
+
+    // 2. filesystem isolado
+    if (setup_mount_ns() != 0)
+        return -1;
+
+    // 3. PID namespace (IMPORTANTE)
+    if (unshare(CLONE_NEWPID) != 0) {
+        perror("unshare(CLONE_NEWPID)");
+        return -1;
+    }
+
+    // 4. separa processo
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        perror("fork");
+        return -1;
+    }
+
+    if (pid == 0) {
+        return sandbox_child(new_root);
+    }
+
+    // PARENT
+    return 0;
+}
+/* static int sandbox_drop_caps(void) {
     cap_t empty = cap_init();
     if (empty == NULL) {
         perror("[SANDBOX] cap_init");
@@ -49,7 +194,7 @@ static int sandbox_drop_caps(void) {
         return -1;
     }
 
-    /* Verify caps are empty */
+    // Verify caps are empty 
     cap_t check = cap_get_proc();
     if (check != NULL) {
         char *text = cap_to_text(check, NULL);
@@ -64,7 +209,8 @@ static int sandbox_drop_caps(void) {
     }
 
     return 0;
-}
+} 
+*/
 
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_pivot_root(): Pivot root to vault path

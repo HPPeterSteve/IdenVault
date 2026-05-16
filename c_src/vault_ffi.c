@@ -264,11 +264,15 @@ int vault_encrypt_ffi(uint32_t id, const char *password) {
         return (int)key_err;
     }
 
+    v->authorized_ops++;
     vault_set_write_mode(v, true); // ALLOW WRITE
 #ifdef __linux__
     DIR *dir = opendir(v->path);
     if (!dir) {
         explicit_bzero(key, KEY_LEN);
+        vault_set_write_mode(v, false);
+        v->authorized_ops--;
+        v->authorized_op_end = time(NULL);
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_IO;
     }
@@ -301,7 +305,10 @@ int vault_encrypt_ffi(uint32_t id, const char *password) {
     explicit_bzero(key, KEY_LEN);
 
     vault_log(LOG_AUDIT, "[FFI] vault_encrypt_ffi: vault='%s' encrypted %d files", v->name, count);
+    monitor_scan_vault(v); /* refresh hashes before releasing */
     vault_set_write_mode(v, false); // RESTORE READ-ONLY
+    v->authorized_ops--;
+    v->authorized_op_end = time(NULL);
     pthread_mutex_unlock(&g_monitor.lock);
 #else
     explicit_bzero(key, KEY_LEN);
@@ -349,11 +356,15 @@ int vault_decrypt_ffi(uint32_t id, const char *password) {
         return (int)key_err;
     }
 
+    v->authorized_ops++;
     vault_set_write_mode(v, true); // ALLOW WRITE
 #ifdef __linux__
     DIR *dir = opendir(v->path);
     if (!dir) {
         explicit_bzero(key, KEY_LEN);
+        vault_set_write_mode(v, false);
+        v->authorized_ops--;
+        v->authorized_op_end = time(NULL);
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_IO;
     }
@@ -386,7 +397,10 @@ int vault_decrypt_ffi(uint32_t id, const char *password) {
     explicit_bzero(key, KEY_LEN);
 
     vault_log(LOG_AUDIT, "[FFI] vault_decrypt_ffi: vault='%s' decrypted %d files", v->name, count);
+    monitor_scan_vault(v); /* refresh hashes before releasing */
     vault_set_write_mode(v, false); // RESTORE READ-ONLY
+    v->authorized_ops--;
+    v->authorized_op_end = time(NULL);
     pthread_mutex_unlock(&g_monitor.lock);
 #else
     explicit_bzero(key, KEY_LEN);
@@ -651,6 +665,84 @@ int vault_export_file_ffi(uint32_t id, const char *filename, const char *dst_pat
     }
 
     return ret;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  AUTHORIZED OPS — Sinaliza operações internas para o monitor inotify
+ *
+ *  O monitor usa v->authorized_ops para distinguir escritas do próprio
+ *  VaranusCore (encrypt, add-file, etc.) de escritas externas (ransomware).
+ *  Sem isso, TODA escrita com write_mode=false vira alerta falso.
+ *
+ *  begin/end por ID  — usado pelo Rust para vault-encrypt, vault-decrypt
+ *  authorize/deauthorize por path — usado pelo Rust add_file, secure_store
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+void vault_begin_authorized_op_ffi(uint32_t id) {
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    Vault *v = vault_find_by_id(id);
+    if (v) {
+        v->authorized_ops++;
+        vault_set_write_mode(v, true);
+    }
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
+}
+
+void vault_end_authorized_op_ffi(uint32_t id) {
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    Vault *v = vault_find_by_id(id);
+    if (v) {
+        monitor_scan_vault(v);
+        vault_set_write_mode(v, false);
+        if (v->authorized_ops > 0) v->authorized_ops--;
+        v->authorized_op_end = time(NULL);
+    }
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
+}
+
+void vault_authorize_path_ffi(const char *path) {
+    if (!path || !*path) return;
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    for (uint32_t i = 0; i < g_catalog.count; i++) {
+        if (strcmp(g_catalog.vaults[i].path, path) == 0) {
+            g_catalog.vaults[i].authorized_ops++;
+            vault_set_write_mode(&g_catalog.vaults[i], true);
+            break;
+        }
+    }
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
+}
+
+void vault_deauthorize_path_ffi(const char *path) {
+    if (!path || !*path) return;
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    for (uint32_t i = 0; i < g_catalog.count; i++) {
+        if (strcmp(g_catalog.vaults[i].path, path) == 0) {
+            Vault *v = &g_catalog.vaults[i];
+            monitor_scan_vault(v);
+            vault_set_write_mode(v, false);
+            if (v->authorized_ops > 0) v->authorized_ops--;
+            v->authorized_op_end = time(NULL);
+            break;
+        }
+    }
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

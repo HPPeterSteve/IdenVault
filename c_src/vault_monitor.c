@@ -345,32 +345,51 @@ void *monitor_thread(void *arg) {
                     Vault *v = monitor_vault_by_wd(ctx, ev->wd);
                     if (v) {
                         const char *evname = (ev->len > 0) ? ev->name : "(unknown)";
- 
+
+                        /*
+                         * self_authorized:
+                         *   true se uma operação interna do VaranusCore está em
+                         *   andamento (authorized_ops > 0, write_mode) OU terminou
+                         *   há menos de 3s (grace period).
+                         *
+                         *   O grace period existe porque o kernel enfileira os
+                         *   eventos inotify no momento da syscall (write/unlink),
+                         *   mas o monitor só lê depois que o mutex é liberado.
+                         *   Nesse intervalo, write_mode já voltou a false.
+                         */
+                        bool self_authorized = (v->authorized_ops > 0)
+                            || (v->write_mode)
+                            || (v->authorized_op_end > 0
+                                && (time(NULL) - v->authorized_op_end) < 3);
+
                         if (ev->mask & IN_MODIFY) {
                             if (is_sandbox_internal(evname)) {
-                                /* Sandbox writing its own marker — not an attack */
                                 vault_log(LOG_INFO, "[%s] Sandbox internal write (ignored): %s", v->name, evname);
-                            } else if (!v->write_mode) {
-                                vault_log(LOG_ALERT, "[CRITICAL] UNAUTHORIZED WRITE detected on '%s' in vault '%s'!", evname, v->name);
+                            } else if (self_authorized) {
+                                vault_log(LOG_INFO, "[%s] Authorized modification (internal op): %s", v->name, evname);
+                                monitor_scan_vault(v);
+                            } else {
+                                vault_log(LOG_ALERT, "[CRITICAL] UNAUTHORIZED WRITE on '%s' in vault '%s'!", evname, v->name);
                                 char reason[256];
                                 snprintf(reason, sizeof(reason), "Unauthorized write (Ransomware attempt?): %s", evname);
                                 alert_trigger(v, reason);
-                                vault_enforce_readonly(v); // Immediately re-lock
-                            } else {
-                                vault_log(LOG_INFO, "[%s] Authorized modification: %s", v->name, evname);
-                                monitor_scan_vault(v);
+                                vault_enforce_readonly(v);
                             }
                         } else if (ev->mask & IN_CREATE) {
                             if (is_sandbox_internal(evname)) {
                                 vault_log(LOG_INFO, "[%s] Sandbox internal create (ignored): %s", v->name, evname);
+                            } else if (self_authorized) {
+                                vault_log(LOG_INFO, "[%s] Authorized file created (internal op): %s", v->name, evname);
+                                monitor_scan_vault(v);
                             } else {
                                 vault_log(LOG_INFO, "[%s] inotify: CREATED %s", v->name, evname);
                                 monitor_scan_vault(v);
                             }
                         } else if (ev->mask & (IN_DELETE | IN_MOVED_FROM)) {
                             if (is_sandbox_internal(evname)) {
-                                /* pivot_root temp dir being cleaned up — not an attack */
                                 vault_log(LOG_INFO, "[%s] Sandbox internal delete (ignored): %s", v->name, evname);
+                            } else if (self_authorized) {
+                                vault_log(LOG_INFO, "[%s] Authorized file delete (internal op): %s", v->name, evname);
                             } else {
                                 vault_log(LOG_ALERT, "[%s] inotify: DELETED/MOVED %s", v->name, evname);
                                 char reason[256];

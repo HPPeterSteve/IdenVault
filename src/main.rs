@@ -75,7 +75,7 @@ const ALL_COMMANDS: &[&str] = &[
 ];
 
 fn show_help() {
-    println!("{}", "\n─── IdenVault v0.8.15 ─────────────────────────────────────────".bright_yellow());
+    println!("{}", "\n─── IdenVault v0.9.0 ─────────────────────────────────────────".bright_yellow());
     
     println!("\n{}", "📦 GESTÃO DE COFRES".bold().cyan());
     println!("  {:<25} → {}", "vault-list", "Lista todos os cofres no catálogo");
