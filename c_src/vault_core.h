@@ -165,6 +165,14 @@ typedef struct FileEntry {
     struct FileEntry *next;
 } FileEntry;
 
+/* Per-file leaky bucket for fine-grained throttling */
+typedef struct FileBucket {
+    char                path[VAULT_PATH_MAX];
+    double              credits;
+    time_t              last_update;
+    struct FileBucket   *next;
+} FileBucket;
+
 /* Hash map bucket */
 #define HASHMAP_BUCKETS 256
 typedef struct {
@@ -210,7 +218,11 @@ typedef struct {
     bool        write_mode;  /* True only during authorized write operations */
 
     /* Engine de isolamento (0 = sem engine, 1-5 = níveis de proteção) */
-    int         engine_level;
+    /* Leaky Bucket for stealth attacks */
+    double      bucket_credits;
+    time_t      bucket_last_update;
+    /* Optional per-file buckets (linked list) for slow-stealth detection */
+    FileBucket *file_buckets;
 } Vault;
 
 /* Catalog: flat array of vaults */
@@ -359,6 +371,7 @@ int vault_change_password_ffi(uint32_t id, const char *old_pass, const char *new
 int vault_encrypt_ffi(uint32_t id, const char *password);
 int vault_decrypt_ffi(uint32_t id, const char *password);
 int vault_scan_ffi(uint32_t id);
+int vault_scan_report_ffi(uint32_t id, char *out, size_t out_len);
 int vault_resolve_ffi(uint32_t id, const char *password);
 void vault_info_ffi(uint32_t id);
 void vault_list_ffi(void);

@@ -34,6 +34,13 @@ extern "C" {
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+/* Per-file leaky bucket for fine-grained throttling */
+typedef struct FileBucket {
+    char                path[VAULT_PATH_MAX];
+    double              credits;
+    time_t              last_update;
+    struct FileBucket   *next;
+} FileBucket;
 #include <sys/inotify.h>
 #include <sys/wait.h>
 #include <pthread.h>
@@ -66,6 +73,8 @@ extern "C" {
  * ───────────────────────────────────────────── */
 #define VAULT_CATALOG_PATH      "/var/lib/vault_security"
 #define VAULT_CATALOG_FILE      "/var/lib/vault_security/catalog.dat"
+    /* Optional per-file buckets (linked list) for slow-stealth detection */
+    FileBucket *file_buckets;
 #define VAULT_LOG_FILE          "/var/log/vault_security.log"
 #define VAULT_LOCK_FILE         "/var/run/vault_security.pid"
 
@@ -366,6 +375,7 @@ int vault_change_password_ffi(uint32_t id, const char *old_pass, const char *new
 int vault_encrypt_ffi(uint32_t id, const char *password);
 int vault_decrypt_ffi(uint32_t id, const char *password);
 int vault_scan_ffi(uint32_t id);
+int vault_scan_report_ffi(uint32_t id, char *out, size_t out_len);
 int vault_resolve_ffi(uint32_t id, const char *password);
 void vault_info_ffi(uint32_t id);
 void vault_list_ffi(void);
