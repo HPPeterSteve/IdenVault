@@ -138,3 +138,144 @@ See `c_src/` for the C API and `src/vault.rs` for the Rust bindings.
 ## License
 
 MIT — see `LICENSE`.
+
+# IdenVault
+
+**IdenVault** é um motor de cofre digital reforçado e ambiente de execução restrito, construído nativamente para Linux.
+
+Escrito em **C** (núcleo de segurança) e **Rust** (camada CLI), oferece proteção criptográfica de arquivos e sandboxing de processos em nível de kernel — extraindo toda a capacidade de isolamento do kernel Linux em vez de depender de abstrações no espaço do usuário.
+
+> Beta. Testado no Linux 5.15+. Contribuições e relatórios de pentest são bem-vindos.
+
+---
+
+## Arquitetura
+
+O projeto opera em dois subsistemas independentes:
+
+**Subsistema de cofre** — diretórios criptografados protegidos com AES-256-GCM, derivação de chaves via PBKDF2-HMAC-SHA256 (310.000 iterações, OWASP 2023), monitoramento de integridade em tempo real via inotify, catálogo binário com detecção de adulteração por HMAC-SHA256 e motor de autenticação com limitação de taxa e backoff exponencial com alertas.
+
+**Subsistema de sandbox** — cinco camadas de isolamento independentes, onde cada camada assume que a anterior foi comprometida:
+
+```
+Camada 1  User Namespace      — root do sandbox mapeado para nobody (UID 65534) no host
+Camada 2  Mount + PID NS      — árvore de processos e visão do sistema de arquivos isolados
+Camada 3  Pivot Root          — substitui o chroot; root antigo desmontado com MNT_DETACH
+Camada 4  Remoção de Caps     — todas as capabilities Linux removidas + PR_SET_NO_NEW_PRIVS
+Camada 5  Seccomp-BPF         — lista de syscalls permitidas, SCMP_ACT_KILL_PROCESS como padrão
+```
+
+---
+
+## Propriedades de Segurança
+
+| Propriedade | Implementação |
+|---|---|
+| Criptografia | AES-256-GCM (autenticada) |
+| Derivação de chaves | PBKDF2-HMAC-SHA256, 310.000 iterações |
+| Verificação de senha | CRYPTO_memcmp (tempo constante) |
+| Integridade do catálogo | HMAC-SHA256 sobre todo o payload |
+| Integridade de arquivos | SHA-256 por arquivo, rescan disparado por inotify |
+| Prevenção de escape de sandbox | UserNS + PivotRoot + Caps + Seccomp-BPF |
+| Higiene de memória | explicit_bzero em todos os buffers de chave/senha |
+| Bloqueio de autenticação | Máximo de tentativas configurável + backoff exponencial de alertas |
+
+---
+
+## Compilação
+
+Dependências:
+
+```bash
+sudo apt install libssl-dev libseccomp-dev libcap-dev
+```
+
+```bash
+cargo build --release
+./target/release/VaranusCore
+```
+
+O script de build compila o núcleo C (`diamondVaults.c`) e o vincula ao binário Rust via FFI.
+
+---
+
+## Uso
+
+### Operações de cofre
+
+```
+vault-create <nome> <caminho> <tipo>     Cria um cofre (tipo: normal | protected)
+vault-encrypt <id>                       Criptografa todos os arquivos do cofre (AES-256-GCM)
+vault-decrypt <id>                       Descriptografa os arquivos do cofre
+vault-scan <id>                          Força uma varredura de integridade
+vault-resolve <id>                       Resolve alerta ativo
+vault-info <id>                          Exibe detalhes do cofre
+vault-files <id>                         Lista arquivos rastreados e status de hash
+vault-rule <id> <max_falhas> [h h]       Adiciona regra de segurança (bloqueio + janela de tempo)
+vault-passwd <id>                        Altera a senha do cofre
+vault-unlock <id>                        Desbloqueia após bloqueio por tentativas falhas
+vault-delete <id>                        Remove o cofre
+```
+
+```bash
+# Cria um cofre protegido
+vault-create secrets /home/usuario/cofres/secrets protected
+
+# Move e criptografa um arquivo para dentro dele
+secure-copy /home/usuario/docs/privado.pdf /home/usuario/cofres/secrets
+
+# Criptografa tudo dentro do cofre
+vault-encrypt 1
+
+# Abre o diretório do cofre em um shell de sandbox reforçado
+vault-sandbox 1
+```
+
+### Sandbox
+
+```
+vault-sandbox <id>       Abre o diretório do cofre em um shell isolado (sandbox de 5 camadas)
+run-in-sandbox <dir>     Executa um diretório no sandbox
+isolate-directory <dir>  Aplica políticas de isolamento ao diretório
+```
+
+### Derivação de chaves
+
+```
+derive-master-key      Deriva a chave mestra a partir de senha + chave de hardware USB (hex)
+```
+
+---
+
+## Interface FFI
+
+O núcleo de segurança em C expõe uma interface FFI estável consumida pela camada CLI em Rust via `build.rs`. A interface foi projetada para ser chamada a partir de qualquer linguagem com suporte a FFI C — C++, Python (ctypes), Go (cgo).
+
+Consulte `c_src/` para a API em C e `src/vault.rs` para os bindings em Rust.
+
+---
+
+## Documentos de Segurança
+
+| Documento | Descrição |
+|---|---|
+| `SECURITY_AUDIT_SUMMARY.md` | Auditoria completa: 9 vulnerabilidades identificadas e corrigidas |
+| `VULNERABILITIES.md` | Detalhamento das vulnerabilidades por severidade |
+| `REMEDIATION_CHECKLIST.md` | Status de correção por achado |
+| `SECURITY_REVIEW.md` | Revisão de segurança da arquitetura |
+
+---
+
+## Status
+
+- Núcleo C: completo em funcionalidades, reforçado
+- CLI Rust: completo em funcionalidades
+- Divisão de módulos (arquivo único → múltiplos arquivos): em andamento
+- Suporte a Windows: não planejado
+- Pentest: em andamento (externo)
+
+---
+
+## Licença
+
+MIT — consulte `LICENSE`.
