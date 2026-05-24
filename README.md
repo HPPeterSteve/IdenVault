@@ -1,6 +1,6 @@
 # IdenVault
 
-**IdenVault** is a hardened digital vault engine and restricted execution environment, built natively for Linux.
+**IdenVault** is a hardened digital vault engine environment, built natively for Linux.
 
 Written in **C** (security core) and **Rust** (CLI layer), it provides cryptographic file protection and kernel-level process sandboxing — extracting the full isolation capability of the Linux kernel rather than relying on userspace abstractions.
 
@@ -141,7 +141,7 @@ MIT — see `LICENSE`.
 
 # IdenVault
 
-**IdenVault** é um motor de cofre digital reforçado e ambiente de execução restrito, construído nativamente para Linux.
+**IdenVault** é um motor de cofre digital reforçado, construído nativamente para Linux.
 
 Escrito em **C** (núcleo de segurança) e **Rust** (camada CLI), oferece proteção criptográfica de arquivos e sandboxing de processos em nível de kernel — extraindo toda a capacidade de isolamento do kernel Linux em vez de depender de abstrações no espaço do usuário.
 
