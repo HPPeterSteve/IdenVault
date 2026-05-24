@@ -1,6 +1,6 @@
 
 
-<img width="804" height="578" alt="image" src="https://github.com/user-attachments/assets/5c0c4f5b-9075-4aca-afdc-5a777f5ceb85" />
+<img width="804" height="428" alt="image" src="https://github.com/user-attachments/assets/5c0c4f5b-9075-4aca-afdc-5a777f5ceb85" />
 
 
 **IdenVault** is a hardened digital vault engine environment, built natively for Linux.
