@@ -1,4 +1,7 @@
-# IdenVault
+
+
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/5c0c4f5b-9075-4aca-afdc-5a777f5ceb85" />
+
 
 **IdenVault** is a hardened digital vault engine environment, built natively for Linux.
 
@@ -12,7 +15,7 @@ Written in **C** (security core) and **Rust** (CLI layer), it provides cryptogra
 
 The project operates on two independent subsystems:
 
-**Vault subsystem** — encrypted directories protected with AES-256-GCM, key derivation via PBKDF2-HMAC-SHA256 (310,000 iterations, OWASP 2023), real-time integrity monitoring via inotify, binary catalog with HMAC-SHA256 tamper detection, and a rate-limited authentication engine with exponential backoff alerting.
+**Vault subsystem** — encrypted directories protected with AES-256-GCM, key derivation via PBKDF2-HMAC-SHA256 (310,000 iterations, OWASP 2023), real-time integrity monitoring via fanotify, binary catalog with HMAC-SHA256 tamper detection, and a rate-limited authentication engine with exponential backoff alerting.
 
 **Sandbox subsystem** — five independent isolation layers where each layer assumes the previous one has been compromised:
 
@@ -153,7 +156,7 @@ Escrito em **C** (núcleo de segurança) e **Rust** (camada CLI), oferece prote�
 
 O projeto opera em dois subsistemas independentes:
 
-**Subsistema de cofre** — diretórios criptografados protegidos com AES-256-GCM, derivação de chaves via PBKDF2-HMAC-SHA256 (310.000 iterações, OWASP 2023), monitoramento de integridade em tempo real via inotify, catálogo binário com detecção de adulteração por HMAC-SHA256 e motor de autenticação com limitação de taxa e backoff exponencial com alertas.
+**Subsistema de cofre** — diretórios criptografados protegidos com AES-256-GCM, derivação de chaves via PBKDF2-HMAC-SHA256 (310.000 iterações, OWASP 2023), monitoramento de integridade em tempo real via fanotify, catálogo binário com detecção de adulteração por HMAC-SHA256 e motor de autenticação com limitação de taxa e backoff exponencial com alertas.
 
 **Subsistema de sandbox** — cinco camadas de isolamento independentes, onde cada camada assume que a anterior foi comprometida:
 
