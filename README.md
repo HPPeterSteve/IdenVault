@@ -3,7 +3,7 @@
 <img width="1004" height="428" alt="image" src="https://github.com/user-attachments/assets/5c0c4f5b-9075-4aca-afdc-5a777f5ceb85" />
 
 
-**IdenVault** is a hardened digital vault engine environment, built natively for Linux.
+# **IdenVault** is a hardened digital vault engine environment, built natively for Linux.
 
 Written in **C** (security core) and **Rust** (CLI layer), it provides cryptographic file protection and kernel-level process sandboxing — extracting the full isolation capability of the Linux kernel rather than relying on userspace abstractions.
 
