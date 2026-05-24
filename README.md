@@ -140,7 +140,7 @@ See `c_src/` for the C API and `src/vault.rs` for the Rust bindings.
 
 ## License
 
-MIT — see `LICENSE`.
+MPL2.0 — see `LICENSE`.
 
 # IdenVault
 
@@ -281,4 +281,4 @@ Consulte `c_src/` para a API em C e `src/vault.rs` para os bindings em Rust.
 
 ## Licença
 
-MIT — consulte `LICENSE`.
+MPL2.0 — consulte `LICENSE`.
