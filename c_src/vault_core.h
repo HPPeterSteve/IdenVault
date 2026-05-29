@@ -211,6 +211,7 @@ typedef struct {
 
     /* Protection */
     bool        write_mode;  /* True only during authorized write operations */
+    int         fanotify_wd; /* Fanotify mark descriptor */
 
     /* Engine de isolamento (0 = sem engine, 1-5 = níveis de proteção) */
     int         engine_level;

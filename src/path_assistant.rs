@@ -37,6 +37,11 @@ pub fn get_valid_path(input: &str, is_dir: bool) -> Option<PathBuf> {
         return Some(path);
     }
 
+    if std::env::args().len() > 1 {
+        eprintln!("{}", format!("✖ O caminho '{}' não foi encontrado.", input).yellow());
+        return None;
+    }
+
     println!("{}", format!("⚠ O caminho '{}' não foi encontrado.", input).yellow());
 
     // Buscar sugestões no diretório pai ou atual
@@ -114,6 +119,11 @@ pub fn ensure_path(provided: Option<&&str>, prompt: &str, is_dir: bool) -> Optio
         if let Some(valid) = get_valid_path(path_str, is_dir) {
             return Some(valid);
         }
+    }
+
+    if std::env::args().len() > 1 {
+        eprintln!("{}", format!("✖ Erro: Caminho não fornecido ou inválido (Modo CLI).").red());
+        return None;
     }
 
     // Se não foi fornecido ou o fornecido era inválido, tentar o rfd

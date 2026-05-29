@@ -212,8 +212,8 @@ typedef struct {
     /* Alert state */
     AlertState  alert;
 
-    /* inotify watch descriptor (Linux only) */
-    int         inotify_wd;
+    /* fanotify watch descriptor (Linux only) */
+    int         fanotify_wd;
 
     /* Protection */
     bool        write_mode;  /* True only during authorized write operations */
@@ -233,7 +233,7 @@ typedef struct {
 /* Monitor thread context */
 typedef struct {
     Catalog        *catalog;
-    int             inotify_fd;
+    int             fanotify_fd;
     volatile bool   running;
 #ifdef __linux__
     pthread_mutex_t lock;

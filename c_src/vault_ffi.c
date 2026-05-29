@@ -74,7 +74,10 @@ int vault_ffi_init(void) {
     g_monitor.fanotify_fd = fanotify_init(FAN_CLASS_CONTENT | FAN_CLOEXEC, O_RDONLY | O_LARGEFILE);
 
     if (g_monitor.fanotify_fd < 0) {
-        vault_log(LOG_WARN, "fanotify_init: %s (monitor disabled - run with CAP_SYS_ADMIN/root to enable)", strerror(errno));
+        vault_log(LOG_ALERT, "\n=======================================================");
+        vault_log(LOG_ALERT, "  WARNING: ACTIVE MONITORING DISABLED (No CAP_SYS_ADMIN) ");
+        vault_log(LOG_ALERT, "  Run: sudo setcap cap_sys_admin+ep ./IdenVault");
+        vault_log(LOG_ALERT, "=======================================================\n");
         /* Non-fatal: continue without active blocking monitor */
     }
 

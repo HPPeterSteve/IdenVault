@@ -902,6 +902,48 @@ fn handle_command(parts: Vec<&str>) {
             
         }
 
+        /* ── Novos comandos Linux Context Menu ── */
+        "dump-vaults" => {
+            let vaults = vault::vault_get_all_paths_pub();
+            for v in vaults {
+                println!("{} | {}", v.0, v.1);
+            }
+        }
+
+        "add-to-vault" => {
+            let file_path = parts.get(1).unwrap_or(&"").to_string();
+            if file_path.is_empty() {
+                eprintln!("{}", "✖ add-to-vault: arquivo obrigatório.".red());
+                return;
+            }
+
+            let vaults = vault::vault_get_all_paths_pub();
+            if !vaults.is_empty() {
+                let options: Vec<String> = vaults.iter().map(|(id, path)| format!("[{}] {}", id, path)).collect();
+                
+                // If CLI args length > 1, maybe we don't want interactive prompt, but we have to pass vault ID somehow. 
+                // Context menus usually pass the vault ID or we select it. 
+                // But the user requested inquire::Select in "add-to-vault", so we keep it.
+                match Select::new("Selecione o cofre de destino:", options).prompt() {
+                    Ok(ans) => {
+                        let vault_path = ans.split("] ").nth(1).unwrap_or("");
+                        let _ = vault::add_file(vault_path, &file_path);
+                        println!("{}", "✔ Arquivo adicionado ao cofre.".green());
+                        
+                        // Only prompt "Enter" if not in CLI? We just keep it simple.
+                        if std::env::args().len() == 1 {
+                            let _ = inquire::Text::new("Pressione Enter para sair...").prompt();
+                        }
+                    },
+                    Err(_) => ()
+                }
+            } else {
+                eprintln!("{}", "Nenhum cofre disponível.".red());
+                if std::env::args().len() == 1 {
+                    let _ = inquire::Text::new("Pressione Enter para sair...").prompt();
+                }
+            }
+        }
         
         /* ── comando desconhecido — Levenshtein sugere o mais próximo ── */
         unknown => {
@@ -931,6 +973,9 @@ fn handle_command(parts: Vec<&str>) {
  *  MAIN
  *  */
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    let is_cli = args.len() > 1;
+
     let mut rl = DefaultEditor::new().unwrap();
     log::info("Aplicação iniciada.");
 
@@ -946,9 +991,16 @@ fn main() {
         }
     }
 
+    if is_cli {
+        let cmd_args: Vec<&str> = args[1..].iter().map(|s| s.as_str()).collect();
+        handle_command(cmd_args);
+        let _ = vault::vault_shutdown();
+        std::process::exit(0);
+    }
+
     println!(
         "{}",
-        "IdenVault v1.2.0 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
+        "IdenVault v1.3.0 iniciado!  Sub-sistema de Assistência de Caminhos ATIVO.
         todos os direitos reservados.
         Digite 'help'"
             .bright_green()
