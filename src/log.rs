@@ -1,6 +1,6 @@
+use chrono::Local;
 use std::fs::OpenOptions;
 use std::io::Write;
-use chrono::Local;
 
 #[allow(dead_code)]
 pub enum LogLevel {

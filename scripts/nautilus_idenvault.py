@@ -76,7 +76,8 @@ class IdenVaultExtension(GObject.GObject, Nautilus.MenuProvider):
         # A API pode passar (window, files) ou apenas (files)
         files = args[-1]
         
-        # Só mostrar se houver ficheiros selecionados e nenhum for uma pasta (o add-file atual não lida nativamente com pastas inteiras, assumindo ficheiros únicos, embora o isolate-directory lide com pastas)
+        # Só mostrar se houver ficheiros selecionados e nenhum for uma pasta (o add-file atual não 
+        # lida nativamente com pastas inteiras, assumindo ficheiros únicos, embora o isolate-directory lide com pastas)
         if not files:
             return []
 

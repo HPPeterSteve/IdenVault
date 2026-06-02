@@ -71,7 +71,10 @@ int vault_ffi_init(void) {
     /* Init monitor context */
     g_monitor.catalog     = &g_catalog;
     g_monitor.running     = true;
-    g_monitor.fanotify_fd = fanotify_init(FAN_CLASS_CONTENT | FAN_CLOEXEC, O_RDONLY | O_LARGEFILE);
+    g_monitor.fanotify_fd = fanotify_init(
+    FAN_CLASS_NOTIF | FAN_CLOEXEC | FAN_REPORT_FID,
+    O_RDONLY | O_LARGEFILE
+);
 
     if (g_monitor.fanotify_fd < 0) {
         vault_log(LOG_ALERT, "\n=======================================================");
@@ -873,6 +876,52 @@ int vault_validate_engine_ffi(uint32_t id) {
 
     VaultError err = engine_validate(v);
 
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
+    return (int)err;
+}
+
+int vault_mount_ffi(uint32_t id, const char *password) {
+    if (!password || password[0] == '\0') return (int)ERR_PASS_REQUIRED;
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    Vault *v = vault_find_by_id(id);
+    if (!v) {
+#ifdef __linux__
+        pthread_mutex_unlock(&g_monitor.lock);
+#endif
+        return (int)ERR_VAULT_NOT_FOUND;
+    }
+    
+    VaultError auth_err = auth_verify_password(v, password);
+    if (auth_err != ERR_OK) {
+#ifdef __linux__
+        pthread_mutex_unlock(&g_monitor.lock);
+#endif
+        return (int)auth_err;
+    }
+    
+    VaultError err = vault_fuse_mount(v);
+#ifdef __linux__
+    pthread_mutex_unlock(&g_monitor.lock);
+#endif
+    return (int)err;
+}
+
+int vault_unmount_ffi(uint32_t id) {
+#ifdef __linux__
+    pthread_mutex_lock(&g_monitor.lock);
+#endif
+    Vault *v = vault_find_by_id(id);
+    if (!v) {
+#ifdef __linux__
+        pthread_mutex_unlock(&g_monitor.lock);
+#endif
+        return (int)ERR_VAULT_NOT_FOUND;
+    }
+    VaultError err = vault_fuse_unmount(v);
 #ifdef __linux__
     pthread_mutex_unlock(&g_monitor.lock);
 #endif

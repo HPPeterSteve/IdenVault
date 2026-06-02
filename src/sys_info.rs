@@ -1,12 +1,8 @@
-
 #[allow(dead_code)]
-
 #[cfg(windows)]
 use windows::Win32::Security::PSID;
 
-use sysinfo::{
-     Disks, Networks, System,
-};
+use sysinfo::{Disks, Networks, System};
 
 #[cfg(windows)]
 unsafe extern "C" {
@@ -18,20 +14,23 @@ pub fn list_process_status(options: &SystemOptions) {
     let mut sys = System::new_all();
     sys.refresh_all();
 
-    println!("\n{:<10} {:<25} {:<12} {:<15}", "PID", "PROCESSO", "MEMÓRIA", "STATUS");
+    println!(
+        "\n{:<10} {:<25} {:<12} {:<15}",
+        "PID", "PROCESSO", "MEMÓRIA", "STATUS"
+    );
     println!("{:-<62}", "");
 
     for (pid, process) in sys.processes() {
         let pid_u32 = pid.as_u32();
-        
+
         // Converte bytes para MB (1024 * 1024)
         let mem_mb = process.memory() as f64 / 1_048_576.0;
 
         // Lógica de status: se o sandbox.c já isolou, aqui você apenas reporta o estado atual
-        let status = if process.cpu_usage() > 0.0 { 
-            "ISOLADO/ATIVO" 
-        } else { 
-            "ISOLADO/IDLE" 
+        let status = if process.cpu_usage() > 0.0 {
+            "ISOLADO/ATIVO"
+        } else {
+            "ISOLADO/IDLE"
         };
 
         // Filtro opcional: mostra apenas se o usuário pediu ou se o processo está ativo
@@ -53,15 +52,19 @@ pub fn check_setup_app_container_and_try_hard_isolate() {
 
     unsafe {
         if setup_app_container(container_name.as_ptr() as *const i8, &mut sid) {
-            println!("✅ AppContainer '{}' configurado com sucesso", container_name);
+            println!(
+                "✅ AppContainer '{}' configurado com sucesso",
+                container_name
+            );
             println!("SID do AppContainer: {:?}", sid);
         } else {
             eprintln!("❌ Falha ao configurar AppContainer '{}'", container_name);
         }
     }
-    
-    let try_hard_isolate_result =  format!("Resultado de try_hard_isolate: {}", 
-    unsafe { try_hard_isolate(container_name.as_ptr() as *const i8) });
+
+    let try_hard_isolate_result = format!("Resultado de try_hard_isolate: {}", unsafe {
+        try_hard_isolate(container_name.as_ptr() as *const i8)
+    });
     println!("{}", try_hard_isolate_result);
 }
 
@@ -126,7 +129,6 @@ pub fn system_information(options: SystemOptions) {
         }
     }
 
-    
     if options.networks {
         println!("Networks:");
         let networks = Networks::new_with_refreshed_list();

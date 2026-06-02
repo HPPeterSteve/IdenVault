@@ -25,35 +25,42 @@
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_drop_caps(): Remove all Linux Capabilities
  * ───────────────────────────────────────────────────────────────────────── */
-static int sandbox_drop_caps(void) {
+static int sandbox_drop_caps(void)
+{
     cap_t empty = cap_init();
-    if (empty == NULL) {
+    if (empty == NULL)
+    {
         perror("[SANDBOX] cap_init");
         return -1;
     }
 
-    if (cap_set_proc(empty) != 0) {
+    if (cap_set_proc(empty) != 0)
+    {
         perror("[SANDBOX] cap_set_proc");
         cap_free(empty);
         return -1;
     }
     cap_free(empty);
 
-    if (prctl(PR_SET_KEEPCAPS, 0) != 0) {
+    if (prctl(PR_SET_KEEPCAPS, 0) != 0)
+    {
         perror("[SANDBOX] PR_SET_KEEPCAPS");
         return -1;
     }
 
-    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0) {
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0)
+    {
         perror("[SANDBOX] PR_SET_NO_NEW_PRIVS");
         return -1;
     }
 
     /* Verify caps are empty */
     cap_t check = cap_get_proc();
-    if (check != NULL) {
+    if (check != NULL)
+    {
         char *text = cap_to_text(check, NULL);
-        if (text && strcmp(text, "=") != 0) {
+        if (text && strcmp(text, "=") != 0)
+        {
             fprintf(stderr, "[SANDBOX] residual caps after drop: %s\n", text);
             cap_free(text);
             cap_free(check);
@@ -69,8 +76,10 @@ static int sandbox_drop_caps(void) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_pivot_root(): Pivot root to vault path
  * ───────────────────────────────────────────────────────────────────────── */
-static int sandbox_pivot_root(const char *new_root) {
-    if (new_root == NULL || new_root[0] == '\0') {
+static int sandbox_pivot_root(const char *new_root)
+{
+    if (new_root == NULL || new_root[0] == '\0')
+    {
         fprintf(stderr, "[SANDBOX] pivot_root: new_root empty\n");
         return -1;
     }
@@ -78,29 +87,34 @@ static int sandbox_pivot_root(const char *new_root) {
     int ret = -1;
     char oldroot[64] = ".sandbox_XXXXXX";
 
-    if (mount(new_root, new_root, NULL, MS_BIND | MS_REC, NULL) != 0) {
+    if (mount(new_root, new_root, NULL, MS_BIND | MS_REC, NULL) != 0)
+    {
         perror("[SANDBOX] mount MS_BIND");
         return -1;
     }
 
-    if (chdir(new_root) != 0) {
+    if (chdir(new_root) != 0)
+    {
         perror("[SANDBOX] chdir new_root");
         goto cleanup_bind;
     }
 
-    if (mkdtemp(oldroot) == NULL) {
+    if (mkdtemp(oldroot) == NULL)
+    {
         perror("[SANDBOX] mkdtemp oldroot");
         goto cleanup_bind;
     }
 
     struct stat st;
-    if (lstat(oldroot, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (lstat(oldroot, &st) != 0 || !S_ISDIR(st.st_mode))
+    {
         fprintf(stderr, "[SANDBOX] oldroot is not a real directory\n");
         rmdir(oldroot);
         goto cleanup_bind;
     }
 
-    if (syscall(SYS_pivot_root, ".", oldroot) != 0) {
+    if (syscall(SYS_pivot_root, ".", oldroot) != 0)
+    {
         perror("[SANDBOX] pivot_root");
         rmdir(oldroot);
         goto cleanup_bind;
@@ -108,11 +122,12 @@ static int sandbox_pivot_root(const char *new_root) {
 
     char oldroot_abs[80];
     snprintf(oldroot_abs, sizeof(oldroot_abs), "/%s", oldroot);
-
+    
     umount2(oldroot_abs, MNT_DETACH);
     rmdir(oldroot_abs);
 
-    if (chdir("/") != 0) {
+    if (chdir("/") != 0)
+    {
         perror("[SANDBOX] chdir / after pivot_root");
         goto cleanup_bind;
     }
@@ -130,7 +145,8 @@ done:
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_prepare_mounts(): Minimal filesystem mounts
  * ───────────────────────────────────────────────────────────────────────── */
-static void sandbox_prepare_mounts(void) {
+static void sandbox_prepare_mounts(void)
+{
     if (mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL) != 0)
         perror("sandbox: MS_PRIVATE / (non-fatal)");
 
@@ -153,7 +169,8 @@ static void sandbox_prepare_mounts(void) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_limit_resources(): rlimits to prevent DoS
  * ───────────────────────────────────────────────────────────────────────── */
-static void sandbox_limit_resources(void) {
+static void sandbox_limit_resources(void)
+{
     struct rlimit rl;
 
     rl.rlim_cur = rl.rlim_max = 32;
@@ -172,9 +189,14 @@ static void sandbox_limit_resources(void) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  apply_seccomp_policy(): Seccomp-BPF allowlist
  * ───────────────────────────────────────────────────────────────────────── */
-static int apply_seccomp_policy(void) {
+static int apply_seccomp_policy(void)
+{
     scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);
-    if (!ctx) { perror("[SANDBOX] seccomp_init"); return -1; }
+    if (!ctx)
+    {
+        perror("[SANDBOX] seccomp_init");
+        return -1;
+    }
 
     /* I/O */
     seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(read), 0);
@@ -276,7 +298,8 @@ static int apply_seccomp_policy(void) {
     seccomp_rule_add(ctx, SCMP_ACT_KILL_PROCESS, SCMP_SYS(kexec_load), 0);
 
     int ret = seccomp_load(ctx);
-    if (ret != 0) perror("[SANDBOX] seccomp_load");
+    if (ret != 0)
+        perror("[SANDBOX] seccomp_load");
     seccomp_release(ctx);
     return ret;
 }
@@ -284,30 +307,34 @@ static int apply_seccomp_policy(void) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  sandbox_write_uid_gid_map(): Write UID/GID maps for user namespace
  * ───────────────────────────────────────────────────────────────────────── */
-static void sandbox_write_uid_gid_map(pid_t child_pid) {
+static void sandbox_write_uid_gid_map(pid_t child_pid)
+{
     char path[256];
     char map[64];
-    int  fd;
+    int fd;
 
     snprintf(path, sizeof(path), "/proc/%d/setgroups", (int)child_pid);
     fd = open(path, O_WRONLY);
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         write(fd, "deny", 4);
         close(fd);
     }
 
     snprintf(path, sizeof(path), "/proc/%d/uid_map", (int)child_pid);
-    snprintf(map,  sizeof(map),  "0 %d 1\n", SANDBOX_NOBODY_UID);
+    snprintf(map, sizeof(map), "0 %d 1\n", SANDBOX_NOBODY_UID);
     fd = open(path, O_WRONLY);
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         write(fd, map, strlen(map));
         close(fd);
     }
 
     snprintf(path, sizeof(path), "/proc/%d/gid_map", (int)child_pid);
-    snprintf(map,  sizeof(map),  "0 %d 1\n", SANDBOX_NOBODY_GID);
+    snprintf(map, sizeof(map), "0 %d 1\n", SANDBOX_NOBODY_GID);
     fd = open(path, O_WRONLY);
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         write(fd, map, strlen(map));
         close(fd);
     }
@@ -316,24 +343,28 @@ static void sandbox_write_uid_gid_map(pid_t child_pid) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  vault_prepare_jail(): Prepare jail structure inside vault path
  * ───────────────────────────────────────────────────────────────────────── */
-static void vault_prepare_jail(const char *vault_path) {
+static void vault_prepare_jail(const char *vault_path)
+{
     char marker[VAULT_PATH_MAX];
     snprintf(marker, sizeof(marker), "%s/%s", vault_path, SANDBOX_JAIL_MARKER);
 
     struct stat st;
-    if (stat(marker, &st) == 0) return;
+    if (stat(marker, &st) == 0)
+        return;
 
     vault_log(LOG_INFO, "[SANDBOX] Preparing jail at '%s'", vault_path);
 
     char dir[VAULT_PATH_MAX];
-    const char *subdirs[] = { "proc", "tmp", "dev", "bin", "lib", "lib64", NULL };
-    for (int i = 0; subdirs[i]; i++) {
+    const char *subdirs[] = {"proc", "tmp", "dev", "bin", "lib", "lib64", NULL};
+    for (int i = 0; subdirs[i]; i++)
+    {
         snprintf(dir, sizeof(dir), "%s/%s", vault_path, subdirs[i]);
         if (mkdir(dir, 0755) != 0 && errno != EEXIST)
             vault_log(LOG_WARN, "[SANDBOX] mkdir %s: %s", dir, strerror(errno));
     }
 
-    if (geteuid() == 0) {
+    if (geteuid() == 0)
+    {
         char dev_null[VAULT_PATH_MAX], dev_zero[VAULT_PATH_MAX];
         snprintf(dev_null, sizeof(dev_null), "%s/dev/null", vault_path);
         snprintf(dev_zero, sizeof(dev_zero), "%s/dev/zero", vault_path);
@@ -344,13 +375,19 @@ static void vault_prepare_jail(const char *vault_path) {
     }
 
     int fd = open(marker, O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0400);
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         write(fd, "IdenVault Jail v2\n", 18);
         close(fd);
-    } else {
-        if (errno == ELOOP) {
+    }
+    else
+    {
+        if (errno == ELOOP)
+        {
             vault_log(LOG_ALERT, "[SANDBOX] Detected symlink on jail marker '%s' (ELOOP)", marker);
-        } else {
+        }
+        else
+        {
             vault_log(LOG_WARN, "[SANDBOX] open(marker '%s'): %s", marker, strerror(errno));
         }
     }
@@ -361,34 +398,43 @@ static void vault_prepare_jail(const char *vault_path) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  vault_sandbox_open() — IdenVault Hardened Sandbox v2
  * ───────────────────────────────────────────────────────────────────────── */
-VaultError vault_sandbox_open(Vault *v, const char *password) {
-    if (!v) return ERR_INVALID_ARGS;
+VaultError vault_sandbox_open(Vault *v, const char *password)
+{
+    if (!v)
+        return ERR_INVALID_ARGS;
 
     /* Authentication */
-    if (v->type == VAULT_TYPE_PROTECTED) {
-        if (!password || !*password) return ERR_PASS_REQUIRED;
+    if (v->type == VAULT_TYPE_PROTECTED)
+    {
+        if (!password || !*password)
+            return ERR_PASS_REQUIRED;
         VaultError err = auth_verify_password(v, password);
-        if (err != ERR_OK) return err;
+        if (err != ERR_OK)
+            return err;
     }
 
-    if (v->path[0] == '\0') {
+    if (v->path[0] == '\0')
+    {
         vault_log(LOG_ERROR, "[SANDBOX] vault path empty");
         return ERR_PATH_INVALID;
     }
 
     vault_log(LOG_AUDIT, "[SANDBOX] Starting IdenVault Hardened Sandbox v2 "
-              "for vault '%s' (id=%u)", v->name, v->id);
+                         "for vault '%s' (id=%u)",
+              v->name, v->id);
 
     vault_prepare_jail(v->path);
 
     int sync_pipe[2];
-    if (pipe(sync_pipe) != 0) {
+    if (pipe(sync_pipe) != 0)
+    {
         vault_log(LOG_ERROR, "[SANDBOX] pipe failed: %s", strerror(errno));
         return ERR_SYSTEM;
     }
 
     pid_t pid = fork();
-    if (pid < 0) {
+    if (pid < 0)
+    {
         close(sync_pipe[0]);
         close(sync_pipe[1]);
         vault_log(LOG_ERROR, "[SANDBOX] fork failed: %s", strerror(errno));
@@ -396,7 +442,8 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     }
 
     /* PARENT */
-    if (pid > 0) {
+    if (pid > 0)
+    {
         vault_auth_pid_add_ffi(pid);
 
         close(sync_pipe[0]);
@@ -408,15 +455,18 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
 
         vault_auth_pid_remove_ffi(pid);
 
-        if (WIFSIGNALED(status)) {
+        if (WIFSIGNALED(status))
+        {
             vault_log(LOG_ALERT,
-                "[SANDBOX] Session of '%s' terminated by signal %d "
-                "(possible seccomp violation)",
-                v->name, WTERMSIG(status));
-        } else {
+                      "[SANDBOX] Session of '%s' terminated by signal %d "
+                      "(possible seccomp violation)",
+                      v->name, WTERMSIG(status));
+        }
+        else
+        {
             vault_log(LOG_AUDIT,
-                "[SANDBOX] Session of '%s' ended (exit %d)",
-                v->name, WEXITSTATUS(status));
+                      "[SANDBOX] Session of '%s' ended (exit %d)",
+                      v->name, WEXITSTATUS(status));
         }
 
         return ERR_OK;
@@ -425,7 +475,8 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     /* CHILD — SANDBOX */
 
     /* [Layer 1] User Namespace */
-    if (unshare(CLONE_NEWUSER) != 0) {
+    if (unshare(CLONE_NEWUSER) != 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] unshare(CLONE_NEWUSER): %s\n", strerror(errno));
         _exit(1);
     }
@@ -439,25 +490,29 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     }
 
     /* [Layer 2] Mount + PID Namespace */
-    if (unshare(CLONE_NEWNS | CLONE_NEWPID) != 0) {
+    if (unshare(CLONE_NEWNS | CLONE_NEWPID) != 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] unshare(CLONE_NEWNS|CLONE_NEWPID): %s\n",
                 strerror(errno));
         _exit(1);
     }
 
     pid_t ns_pid = fork();
-    if (ns_pid < 0) {
+    if (ns_pid < 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] fork PID NS: %s\n", strerror(errno));
         _exit(1);
     }
-    if (ns_pid > 0) {
+    if (ns_pid > 0)
+    {
         int st;
         waitpid(ns_pid, &st, 0);
         _exit(WIFEXITED(st) ? WEXITSTATUS(st) : 1);
     }
 
     /* [Layer 3] Pivot Root */
-    if (sandbox_pivot_root(v->path) != 0) {
+    if (sandbox_pivot_root(v->path) != 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] pivot_root failed\n");
         _exit(1);
     }
@@ -465,7 +520,8 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     sandbox_prepare_mounts();
 
     /* [Layer 4] Drop capabilities */
-    if (sandbox_drop_caps() != 0) {
+    if (sandbox_drop_caps() != 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] cap drop failed\n");
         _exit(1);
     }
@@ -473,7 +529,8 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     sandbox_limit_resources();
 
     /* [Layer 5] Seccomp-BPF — LAST STEP */
-    if (apply_seccomp_policy() != 0) {
+    if (apply_seccomp_policy() != 0)
+    {
         fprintf(stderr, "[SANDBOX][FATAL] seccomp policy failed\n");
         _exit(1);
     }
@@ -490,9 +547,9 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
     execl("/bin/sh", "sh", "-i", NULL);
 
     fprintf(stderr,
-        "[SANDBOX][FATAL] execl(/bin/sh) failed: %s\n"
-        "  Hint: place a static /bin/sh (busybox) inside the vault.\n",
-        strerror(errno));
+            "[SANDBOX][FATAL] execl(/bin/sh) failed: %s\n"
+            "  Hint: place a static /bin/sh (busybox) inside the vault.\n",
+            strerror(errno));
     _exit(127);
 }
 
@@ -502,7 +559,8 @@ VaultError vault_sandbox_open(Vault *v, const char *password) {
  * Windows stub: sandbox not available.
  * The Windows sandbox (AppContainer) is handled in Rust via vault.rs.
  */
-VaultError vault_sandbox_open(Vault *v, const char *password) {
+VaultError vault_sandbox_open(Vault *v, const char *password)
+{
     (void)v;
     (void)password;
     vault_log(LOG_ERROR, "[SANDBOX] Not available on Windows — use Rust AppContainer");

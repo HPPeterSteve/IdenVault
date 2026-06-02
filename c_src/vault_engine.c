@@ -49,15 +49,19 @@
  * ───────────────────────────────────────────────────────────────────────── */
 
 /* Cria um diretório com permissões 0700. */
-static VaultError engine_mkdir(const char *path) {
-    if (!path || path[0] == '\0') {
+static VaultError engine_mkdir(const char *path)
+{
+    if (!path || path[0] == '\0')
+    {
         vault_log(LOG_ERROR, "%s engine_mkdir: caminho vazio", ENGINE_LOG_PREFIX);
         return ERR_INVALID_ARGS;
     }
 
     struct stat st;
-    if (stat(path, &st) == 0) {
-        if (!S_ISDIR(st.st_mode)) {
+    if (stat(path, &st) == 0)
+    {
+        if (!S_ISDIR(st.st_mode))
+        {
             vault_log(LOG_ERROR, "%s '%s' existe mas não é diretório",
                       ENGINE_LOG_PREFIX, path);
             return ERR_IO;
@@ -65,13 +69,15 @@ static VaultError engine_mkdir(const char *path) {
         return ERR_OK;
     }
 
-    if (mkdir(path, 0700) != 0) {
+    if (mkdir(path, 0700) != 0)
+    {
         vault_log(LOG_ERROR, "%s mkdir('%s'): %s",
                   ENGINE_LOG_PREFIX, path, strerror(errno));
         return ERR_IO;
     }
 
-    if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode))
+    {
         vault_log(LOG_ERROR, "%s mkdir('%s'): criado mas stat falhou",
                   ENGINE_LOG_PREFIX, path);
         return ERR_IO;
@@ -83,11 +89,13 @@ static VaultError engine_mkdir(const char *path) {
 
 /* [FIX-1] Valida que um caminho está contido dentro do vault.
  * Verifica separador após prefixo para evitar /vault1 aceitar /vault1_evil. */
-static VaultError engine_validate_inside_vault(const Vault *v, const char *path) {
+static VaultError engine_validate_inside_vault(const Vault *v, const char *path)
+{
     char resolved[PATH_MAX];
     char vault_resolved[PATH_MAX];
 
-    if (!realpath(v->path, vault_resolved)) {
+    if (!realpath(v->path, vault_resolved))
+    {
         vault_log(LOG_ERROR, "%s realpath(vault): %s",
                   ENGINE_LOG_PREFIX, strerror(errno));
         return ERR_PATH_INVALID;
@@ -97,14 +105,16 @@ static VaultError engine_validate_inside_vault(const Vault *v, const char *path)
     snprintf(tmp, sizeof(tmp), "%s", path);
 
     char *slash = strrchr(tmp, '/');
-    if (!slash) {
+    if (!slash)
+    {
         vault_log(LOG_ERROR, "%s caminho sem separador: %s",
                   ENGINE_LOG_PREFIX, path);
         return ERR_PATH_INVALID;
     }
 
     *slash = '\0';
-    if (!realpath(tmp, resolved)) {
+    if (!realpath(tmp, resolved))
+    {
         vault_log(LOG_ERROR, "%s realpath(pai de '%s'): %s",
                   ENGINE_LOG_PREFIX, path, strerror(errno));
         return ERR_PATH_INVALID;
@@ -113,7 +123,8 @@ static VaultError engine_validate_inside_vault(const Vault *v, const char *path)
     size_t vlen = strlen(vault_resolved);
 
     if (strncmp(resolved, vault_resolved, vlen) != 0 ||
-        (resolved[vlen] != '/' && resolved[vlen] != '\0')) {
+        (resolved[vlen] != '/' && resolved[vlen] != '\0'))
+    {
         vault_log(LOG_ERROR, "%s VIOLAÇÃO DE PATH: '%s' fora do vault '%s'",
                   ENGINE_LOG_PREFIX, path, vault_resolved);
         return ERR_PERM_DENIED;
@@ -171,18 +182,24 @@ static const char *DECOY_TEMPLATES[] = {
 #define DECOY_TEMPLATE_COUNT ((int)(sizeof(DECOY_TEMPLATES) / sizeof(DECOY_TEMPLATES[0])))
 
 /* [FIX-4] Escreve arquivo isca de texto com conteúdo variado. */
-static VaultError engine_write_text_decoy(const char *filepath, char letter) {
+static VaultError engine_write_text_decoy(const char *filepath, char letter)
+{
     int fd = open(filepath, O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
-    if (fd < 0) {
-        if (errno == ELOOP) {
+    if (fd < 0)
+    {
+        if (errno == ELOOP)
+        {
             vault_log(LOG_ALERT, "%s fopen->open ELOOP (symlink) on '%s'", ENGINE_LOG_PREFIX, filepath);
-        } else {
+        }
+        else
+        {
             vault_log(LOG_ERROR, "%s open('%s'): %s", ENGINE_LOG_PREFIX, filepath, strerror(errno));
         }
         return ERR_IO;
     }
     FILE *f = fdopen(fd, "w");
-    if (!f) {
+    if (!f)
+    {
         close(fd);
         vault_log(LOG_ERROR, "%s fdopen('%s') failed", ENGINE_LOG_PREFIX, filepath);
         return ERR_IO;
@@ -199,11 +216,13 @@ static VaultError engine_write_text_decoy(const char *filepath, char letter) {
         "eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.\n";
 
     int repeats = 2 + ((letter - 'a') % 5);
-    for (int i = 0; i < repeats; i++) {
+    for (int i = 0; i < repeats; i++)
+    {
         fputs(LOREM, f);
     }
 
-    if (fflush(f) != 0) {
+    if (fflush(f) != 0)
+    {
         vault_log(LOG_ERROR, "%s fflush('%s'): %s",
                   ENGINE_LOG_PREFIX, filepath, strerror(errno));
         fclose(f);
@@ -212,7 +231,8 @@ static VaultError engine_write_text_decoy(const char *filepath, char letter) {
     fclose(f);
 
     struct stat st;
-    if (stat(filepath, &st) != 0 || !S_ISREG(st.st_mode)) {
+    if (stat(filepath, &st) != 0 || !S_ISREG(st.st_mode))
+    {
         vault_log(LOG_ERROR, "%s arquivo isca não confirmado: %s",
                   ENGINE_LOG_PREFIX, filepath);
         return ERR_IO;
@@ -222,24 +242,27 @@ static VaultError engine_write_text_decoy(const char *filepath, char letter) {
 }
 
 /* [FIX-5] Magic bytes de formatos reais para variar entre arquivos. */
-static const struct {
+static const struct
+{
     uint8_t bytes[4];
-    size_t  len;
+    size_t len;
 } REAL_MAGIC[] = {
-    { { 0x25, 0x50, 0x44, 0x46 }, 4 }, /* %PDF */
-    { { 0x50, 0x4B, 0x03, 0x04 }, 4 }, /* PK (ZIP/DOCX/XLSX) */
-    { { 0xFF, 0xD8, 0xFF, 0xE0 }, 4 }, /* JPEG JFIF */
-    { { 0x89, 0x50, 0x4E, 0x47 }, 4 }, /* PNG */
-    { { 0x52, 0x49, 0x46, 0x46 }, 4 }, /* RIFF (WAV/AVI) */
+    {{0x25, 0x50, 0x44, 0x46}, 4}, /* %PDF */
+    {{0x50, 0x4B, 0x03, 0x04}, 4}, /* PK (ZIP/DOCX/XLSX) */
+    {{0xFF, 0xD8, 0xFF, 0xE0}, 4}, /* JPEG JFIF */
+    {{0x89, 0x50, 0x4E, 0x47}, 4}, /* PNG */
+    {{0x52, 0x49, 0x46, 0x46}, 4}, /* RIFF (WAV/AVI) */
 };
 
 #define REAL_MAGIC_COUNT ((int)(sizeof(REAL_MAGIC) / sizeof(REAL_MAGIC[0])))
 
 /* [FIX-5] Binário falso com magic rotativo por letra. */
-static VaultError engine_write_binary_decoy(const char *filepath, char letter) {
+static VaultError engine_write_binary_decoy(const char *filepath, char letter)
+{
     uint8_t buf[512];
     int fd = open("/dev/urandom", O_RDONLY);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         vault_log(LOG_ERROR, "%s open(/dev/urandom): %s",
                   ENGINE_LOG_PREFIX, strerror(errno));
         return ERR_IO;
@@ -248,7 +271,8 @@ static VaultError engine_write_binary_decoy(const char *filepath, char letter) {
     ssize_t got = read(fd, buf, sizeof(buf));
     close(fd);
 
-    if (got != (ssize_t)sizeof(buf)) {
+    if (got != (ssize_t)sizeof(buf))
+    {
         vault_log(LOG_ERROR, "%s urandom leu %zd bytes (esperado %zu)",
                   ENGINE_LOG_PREFIX, got, sizeof(buf));
         return ERR_IO;
@@ -258,23 +282,29 @@ static VaultError engine_write_binary_decoy(const char *filepath, char letter) {
     memcpy(buf, REAL_MAGIC[magic_idx].bytes, REAL_MAGIC[magic_idx].len);
 
     int out_fd = open(filepath, O_CREAT | O_WRONLY | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
-    if (out_fd < 0) {
-        if (errno == ELOOP) {
+    if (out_fd < 0)
+    {
+        if (errno == ELOOP)
+        {
             vault_log(LOG_ALERT, "%s fopen->open ELOOP (symlink) on '%s'", ENGINE_LOG_PREFIX, filepath);
-        } else {
+        }
+        else
+        {
             vault_log(LOG_ERROR, "%s open(bin '%s'): %s", ENGINE_LOG_PREFIX, filepath, strerror(errno));
         }
         return ERR_IO;
     }
     FILE *f = fdopen(out_fd, "wb");
-    if (!f) {
+    if (!f)
+    {
         close(out_fd);
         vault_log(LOG_ERROR, "%s fdopen(bin '%s') failed", ENGINE_LOG_PREFIX, filepath);
         return ERR_IO;
     }
 
     size_t written = fwrite(buf, 1, sizeof(buf), f);
-    if (fflush(f) != 0) {
+    if (fflush(f) != 0)
+    {
         vault_log(LOG_ERROR, "%s fflush(bin '%s'): %s",
                   ENGINE_LOG_PREFIX, filepath, strerror(errno));
         fclose(f);
@@ -282,14 +312,16 @@ static VaultError engine_write_binary_decoy(const char *filepath, char letter) {
     }
     fclose(f);
 
-    if (written != sizeof(buf)) {
+    if (written != sizeof(buf))
+    {
         vault_log(LOG_ERROR, "%s fwrite incompleto em '%s': %zu/%zu bytes",
                   ENGINE_LOG_PREFIX, filepath, written, sizeof(buf));
         return ERR_IO;
     }
 
     struct stat st;
-    if (stat(filepath, &st) != 0 || st.st_size != (off_t)sizeof(buf)) {
+    if (stat(filepath, &st) != 0 || st.st_size != (off_t)sizeof(buf))
+    {
         vault_log(LOG_ERROR, "%s binário falso não confirmado: %s",
                   ENGINE_LOG_PREFIX, filepath);
         return ERR_IO;
@@ -299,14 +331,16 @@ static VaultError engine_write_binary_decoy(const char *filepath, char letter) {
 }
 
 /* Popula uma camada com arquivos a-z. */
-static VaultError engine_populate_layer(const char *layer_path, bool binary) {
+static VaultError engine_populate_layer(const char *layer_path, bool binary)
+{
     int errors = 0;
     int created = 0;
 
     vault_log(LOG_INFO, "%s populando camada: %s (%s)",
               ENGINE_LOG_PREFIX, layer_path, binary ? "binário" : "texto");
 
-    for (char c = 'a'; c <= 'z'; c++) {
+    for (char c = 'a'; c <= 'z'; c++)
+    {
         char filepath[PATH_MAX];
         if (binary)
             snprintf(filepath, sizeof(filepath), "%s/%c.enc", layer_path, c);
@@ -314,17 +348,19 @@ static VaultError engine_populate_layer(const char *layer_path, bool binary) {
             snprintf(filepath, sizeof(filepath), "%s/%c.txt", layer_path, c);
 
         VaultError err = binary
-            ? engine_write_binary_decoy(filepath, c)
-            : engine_write_text_decoy(filepath, c);
+                             ? engine_write_binary_decoy(filepath, c)
+                             : engine_write_text_decoy(filepath, c);
 
-        if (err != ERR_OK) {
+        if (err != ERR_OK)
+        {
             vault_log(LOG_ERROR, "%s erro ao criar isca '%s': %s",
                       ENGINE_LOG_PREFIX, filepath, vault_strerror(err));
             errors++;
             continue;
         }
 
-        if (chmod(filepath, 0400) != 0) {
+        if (chmod(filepath, 0400) != 0)
+        {
             vault_log(LOG_WARN, "%s chmod(0400) em '%s': %s",
                       ENGINE_LOG_PREFIX, filepath, strerror(errno));
         }
@@ -335,7 +371,8 @@ static VaultError engine_populate_layer(const char *layer_path, bool binary) {
     vault_log(LOG_INFO, "%s camada '%s': %d arquivos criados, %d erros",
               ENGINE_LOG_PREFIX, layer_path, created, errors);
 
-    if (errors > 0) {
+    if (errors > 0)
+    {
         vault_log(LOG_ERROR, "%s camada incompleta: %d/%d arquivos falharam",
                   ENGINE_LOG_PREFIX, errors, created + errors);
         return ERR_IO;
@@ -345,23 +382,29 @@ static VaultError engine_populate_layer(const char *layer_path, bool binary) {
 }
 
 /* [FIX-3] Cleanup best-effort: remove labirinto parcial. */
-static void engine_cleanup_decoy(const char *decoy_root) {
-    if (!decoy_root || decoy_root[0] == '\0') return;
+static void engine_cleanup_decoy(const char *decoy_root)
+{
+    if (!decoy_root || decoy_root[0] == '\0')
+        return;
 
     vault_log(LOG_WARN, "%s cleanup: removendo labirinto parcial em '%s'",
               ENGINE_LOG_PREFIX, decoy_root);
 
     char cmd[PATH_MAX + 16];
     if (strchr(decoy_root, '\'') || strchr(decoy_root, ';') ||
-        strchr(decoy_root, '&')  || strchr(decoy_root, '|')) {
+        strchr(decoy_root, '&') || strchr(decoy_root, '|'))
+    {
         vault_log(LOG_ERROR, "%s cleanup: path suspeito, abortando rm", ENGINE_LOG_PREFIX);
         return;
     }
     snprintf(cmd, sizeof(cmd), "rm -rf '%s'", decoy_root);
     int rc = system(cmd);
-    if (rc != 0) {
+    if (rc != 0)
+    {
         vault_log(LOG_WARN, "%s cleanup: rm -rf retornou %d", ENGINE_LOG_PREFIX, rc);
-    } else {
+    }
+    else
+    {
         vault_log(LOG_INFO, "%s cleanup: labirinto parcial removido", ENGINE_LOG_PREFIX);
     }
 }
@@ -369,19 +412,23 @@ static void engine_cleanup_decoy(const char *decoy_root) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  engine_apply() — ponto de entrada público
  * ───────────────────────────────────────────────────────────────────────── */
-VaultError engine_apply(Vault *v) {
-    if (!v) {
+VaultError engine_apply(Vault *v)
+{
+    if (!v)
+    {
         vault_log(LOG_ERROR, "%s engine_apply: vault NULL", ENGINE_LOG_PREFIX);
         return ERR_INVALID_ARGS;
     }
 
-    if (v->status == VAULT_STATUS_DELETED) {
+    if (v->status == VAULT_STATUS_DELETED)
+    {
         vault_log(LOG_ERROR, "%s engine_apply: vault '%s' está DELETED",
                   ENGINE_LOG_PREFIX, v->name);
         return ERR_INVALID_ARGS;
     }
 
-    if (v->status == VAULT_STATUS_LOCKED) {
+    if (v->status == VAULT_STATUS_LOCKED)
+    {
         vault_log(LOG_ERROR, "%s engine_apply: vault '%s' está LOCKED",
                   ENGINE_LOG_PREFIX, v->name);
         return ERR_VAULT_LOCKED;
@@ -389,13 +436,15 @@ VaultError engine_apply(Vault *v) {
 
     int level = v->engine_level;
 
-    if (level < ENGINE_LEVEL_MIN || level > ENGINE_LEVEL_MAX) {
+    if (level < ENGINE_LEVEL_MIN || level > ENGINE_LEVEL_MAX)
+    {
         vault_log(LOG_ERROR, "%s engine_apply: nível inválido %d (válido: %d-%d)",
                   ENGINE_LOG_PREFIX, level, ENGINE_LEVEL_MIN, ENGINE_LEVEL_MAX);
         return ERR_INVALID_ARGS;
     }
 
-    if (level == 0) {
+    if (level == 0)
+    {
         vault_log(LOG_INFO, "%s engine 0 selecionado — sem labirinto", ENGINE_LOG_PREFIX);
         return ERR_OK;
     }
@@ -407,7 +456,8 @@ VaultError engine_apply(Vault *v) {
     snprintf(decoy_root, sizeof(decoy_root), "%s/%s", v->path, ENGINE_DECOY_DIR);
 
     VaultError err = engine_mkdir(decoy_root);
-    if (err != ERR_OK) {
+    if (err != ERR_OK)
+    {
         vault_log(LOG_ERROR, "%s falha ao criar diretório raiz de iscas: %s",
                   ENGINE_LOG_PREFIX, vault_strerror(err));
         return err;
@@ -417,28 +467,31 @@ VaultError engine_apply(Vault *v) {
     snprintf(real_dir, sizeof(real_dir), "%s/%s", v->path, ENGINE_REAL_DIR);
 
     err = engine_mkdir(real_dir);
-    if (err != ERR_OK) {
+    if (err != ERR_OK)
+    {
         vault_log(LOG_ERROR, "%s falha ao criar diretório real: %s",
                   ENGINE_LOG_PREFIX, vault_strerror(err));
         return err;
     }
 
-    if (chmod(real_dir, 0700) != 0) {
+    if (chmod(real_dir, 0700) != 0)
+    {
         vault_log(LOG_WARN, "%s chmod(0700) em real_dir: %s",
                   ENGINE_LOG_PREFIX, strerror(errno));
     }
 
-    int   layer_count = ENGINE_LAYER_COUNT[level];
-    bool  binary      = (level >= 4);
+    int layer_count = ENGINE_LAYER_COUNT[level];
+    bool binary = (level >= 4);
 
     vault_log(LOG_INFO, "%s engine %d: %d camadas, modo=%s",
               ENGINE_LOG_PREFIX, level, layer_count,
               binary ? "binário (.enc)" : "texto (.txt)");
 
-    int layers_ok     = 0;
+    int layers_ok = 0;
     int layers_failed = 0;
 
-    for (int i = 1; i <= layer_count; i++) {
+    for (int i = 1; i <= layer_count; i++)
+    {
         char layer_path[PATH_MAX];
         snprintf(layer_path, sizeof(layer_path), "%s/layer_%02d", decoy_root, i);
 
@@ -446,7 +499,8 @@ VaultError engine_apply(Vault *v) {
                   ENGINE_LOG_PREFIX, i, layer_count, layer_path);
 
         err = engine_validate_inside_vault(v, layer_path);
-        if (err != ERR_OK) {
+        if (err != ERR_OK)
+        {
             vault_log(LOG_ERROR, "%s camada %d: validação de caminho falhou",
                       ENGINE_LOG_PREFIX, i);
             layers_failed++;
@@ -454,7 +508,8 @@ VaultError engine_apply(Vault *v) {
         }
 
         err = engine_mkdir(layer_path);
-        if (err != ERR_OK) {
+        if (err != ERR_OK)
+        {
             vault_log(LOG_ERROR, "%s camada %d: mkdir falhou: %s",
                       ENGINE_LOG_PREFIX, i, vault_strerror(err));
             layers_failed++;
@@ -462,7 +517,8 @@ VaultError engine_apply(Vault *v) {
         }
 
         err = engine_populate_layer(layer_path, binary);
-        if (err != ERR_OK) {
+        if (err != ERR_OK)
+        {
             vault_log(LOG_ERROR, "%s camada %d: populate falhou: %s",
                       ENGINE_LOG_PREFIX, i, vault_strerror(err));
             layers_failed++;
@@ -480,7 +536,8 @@ VaultError engine_apply(Vault *v) {
               layers_ok, layer_count, layers_failed);
 
     /* [FIX-3] Cleanup se labirinto ficou parcial */
-    if (layers_failed > 0) {
+    if (layers_failed > 0)
+    {
         vault_log(LOG_ERROR,
                   "%s engine %d INCOMPLETO: %d camadas falharam — executando cleanup",
                   ENGINE_LOG_PREFIX, level, layers_failed);
@@ -488,7 +545,8 @@ VaultError engine_apply(Vault *v) {
         return ERR_IO;
     }
 
-    if (level == 5) {
+    if (level == 5)
+    {
         vault_log(LOG_INFO,
                   "%s engine 5: labirinto de 20 camadas criado. "
                   "OverlayFS será implementado em etapa futura.",
@@ -504,20 +562,24 @@ VaultError engine_apply(Vault *v) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  engine_validate() — verifica integridade do labirinto
  * ───────────────────────────────────────────────────────────────────────── */
-VaultError engine_validate(Vault *v) {
-    if (!v) {
+VaultError engine_validate(Vault *v)
+{
+    if (!v)
+    {
         vault_log(LOG_ERROR, "%s engine_validate: vault NULL", ENGINE_LOG_PREFIX);
         return ERR_INVALID_ARGS;
     }
 
     int level = v->engine_level;
 
-    if (level == 0) {
+    if (level == 0)
+    {
         vault_log(LOG_INFO, "%s engine_validate: engine 0 — nada a validar", ENGINE_LOG_PREFIX);
         return ERR_OK;
     }
 
-    if (level < ENGINE_LEVEL_MIN || level > ENGINE_LEVEL_MAX) {
+    if (level < ENGINE_LEVEL_MIN || level > ENGINE_LEVEL_MAX)
+    {
         vault_log(LOG_ERROR, "%s engine_validate: nível inválido %d",
                   ENGINE_LOG_PREFIX, level);
         return ERR_INVALID_ARGS;
@@ -530,7 +592,8 @@ VaultError engine_validate(Vault *v) {
     snprintf(decoy_root, sizeof(decoy_root), "%s/%s", v->path, ENGINE_DECOY_DIR);
 
     struct stat st;
-    if (stat(decoy_root, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (stat(decoy_root, &st) != 0 || !S_ISDIR(st.st_mode))
+    {
         vault_log(LOG_ERROR, "%s diretório de iscas ausente: %s",
                   ENGINE_LOG_PREFIX, decoy_root);
         return ERR_INTEGRITY;
@@ -539,36 +602,41 @@ VaultError engine_validate(Vault *v) {
     char real_dir[PATH_MAX];
     snprintf(real_dir, sizeof(real_dir), "%s/%s", v->path, ENGINE_REAL_DIR);
 
-    if (stat(real_dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (stat(real_dir, &st) != 0 || !S_ISDIR(st.st_mode))
+    {
         vault_log(LOG_ERROR, "%s diretório real ausente: %s",
                   ENGINE_LOG_PREFIX, real_dir);
         return ERR_INTEGRITY;
     }
 
-    int layer_count    = ENGINE_LAYER_COUNT[level];
-    bool binary        = (level >= 4);
+    int layer_count = ENGINE_LAYER_COUNT[level];
+    bool binary = (level >= 4);
     int missing_layers = 0;
-    int missing_files  = 0;
+    int missing_files = 0;
 
-    for (int i = 1; i <= layer_count; i++) {
+    for (int i = 1; i <= layer_count; i++)
+    {
         char layer_path[PATH_MAX];
         snprintf(layer_path, sizeof(layer_path), "%s/layer_%02d", decoy_root, i);
 
-        if (stat(layer_path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        if (stat(layer_path, &st) != 0 || !S_ISDIR(st.st_mode))
+        {
             vault_log(LOG_ERROR, "%s camada ausente: %s",
                       ENGINE_LOG_PREFIX, layer_path);
             missing_layers++;
             continue;
         }
 
-        for (char c = 'a'; c <= 'z'; c++) {
+        for (char c = 'a'; c <= 'z'; c++)
+        {
             char filepath[PATH_MAX];
             if (binary)
                 snprintf(filepath, sizeof(filepath), "%s/%c.enc", layer_path, c);
             else
                 snprintf(filepath, sizeof(filepath), "%s/%c.txt", layer_path, c);
 
-            if (stat(filepath, &st) != 0 || !S_ISREG(st.st_mode)) {
+            if (stat(filepath, &st) != 0 || !S_ISREG(st.st_mode))
+            {
                 vault_log(LOG_WARN, "%s arquivo isca ausente: %s",
                           ENGINE_LOG_PREFIX, filepath);
                 missing_files++;
@@ -576,7 +644,8 @@ VaultError engine_validate(Vault *v) {
         }
     }
 
-    if (missing_layers > 0 || missing_files > 0) {
+    if (missing_layers > 0 || missing_files > 0)
+    {
         vault_log(LOG_ERROR,
                   "%s validação FALHOU: %d camadas ausentes, %d arquivos ausentes",
                   ENGINE_LOG_PREFIX, missing_layers, missing_files);
@@ -598,8 +667,10 @@ VaultError engine_validate(Vault *v) {
 /* ─────────────────────────────────────────────────────────────────────────
  *  [FIX-2] engine_is_decoy_path_v() — versão segura com realpath
  * ───────────────────────────────────────────────────────────────────────── */
-bool engine_is_decoy_path_v(const Vault *v, const char *path) {
-    if (!v || !path) return false;
+bool engine_is_decoy_path_v(const Vault *v, const char *path)
+{
+    if (!v || !path)
+        return false;
 
     char decoy_root[PATH_MAX];
     char decoy_resolved[PATH_MAX];
@@ -607,8 +678,10 @@ bool engine_is_decoy_path_v(const Vault *v, const char *path) {
 
     snprintf(decoy_root, sizeof(decoy_root), "%s/%s", v->path, ENGINE_DECOY_DIR);
 
-    if (!realpath(decoy_root, decoy_resolved)) return false;
-    if (!realpath(path, path_resolved)) return false;
+    if (!realpath(decoy_root, decoy_resolved))
+        return false;
+    if (!realpath(path, path_resolved))
+        return false;
 
     size_t dlen = strlen(decoy_resolved);
 
@@ -617,7 +690,9 @@ bool engine_is_decoy_path_v(const Vault *v, const char *path) {
 }
 
 /* Wrapper de compatibilidade para chamadores legados. */
-bool engine_is_decoy_path(const char *path) {
-    if (!path) return false;
+bool engine_is_decoy_path(const char *path)
+{
+    if (!path)
+        return false;
     return (strstr(path, ENGINE_DECOY_DIR) != NULL);
 }

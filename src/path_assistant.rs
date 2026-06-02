@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::fs;
 use colored::*;
 use inquire::Select;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Calcula a distância de Levenshtein entre duas strings para fuzzy matching.
 #[allow(dead_code)]
@@ -12,8 +12,12 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
     let n = s2_chars.len();
     let mut dp = vec![vec![0; n + 1]; m + 1];
 
-    for i in 0..=m { dp[i][0] = i; }
-    for j in 0..=n { dp[0][j] = j; }
+    for i in 0..=m {
+        dp[i][0] = i;
+    }
+    for j in 0..=n {
+        dp[0][j] = j;
+    }
 
     for i in 1..=m {
         for j in 1..=n {
@@ -32,20 +36,27 @@ fn levenshtein_distance(s1: &str, s2: &str) -> usize {
 #[allow(dead_code)]
 pub fn get_valid_path(input: &str, is_dir: bool) -> Option<PathBuf> {
     let path = PathBuf::from(input);
-    
+
     if path.exists() {
         return Some(path);
     }
 
     if std::env::args().len() > 1 {
-        eprintln!("{}", format!("✖ O caminho '{}' não foi encontrado.", input).yellow());
+        eprintln!(
+            "{}",
+            format!("✖ O caminho '{}' não foi encontrado.", input).yellow()
+        );
         return None;
     }
 
-    println!("{}", format!("⚠ O caminho '{}' não foi encontrado.", input).yellow());
+    println!(
+        "{}",
+        format!("⚠ O caminho '{}' não foi encontrado.", input).yellow()
+    );
 
     // Buscar sugestões no diretório pai ou atual
-    let parent = path.parent()
+    let parent = path
+        .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
 
@@ -53,7 +64,15 @@ pub fn get_valid_path(input: &str, is_dir: bool) -> Option<PathBuf> {
     let entries = match fs::read_dir(parent) {
         Ok(e) => e,
         Err(e) => {
-            eprintln!("{}", format!("✖ Erro ao acessar diretório pai '{}': {}", parent.display(), e).red());
+            eprintln!(
+                "{}",
+                format!(
+                    "✖ Erro ao acessar diretório pai '{}': {}",
+                    parent.display(),
+                    e
+                )
+                .red()
+            );
             return None;
         }
     };
@@ -62,17 +81,25 @@ pub fn get_valid_path(input: &str, is_dir: bool) -> Option<PathBuf> {
     let target_name = match path.file_name().and_then(|n| n.to_str()) {
         Some(name) => name,
         None => {
-            eprintln!("{}", "✖ Não foi possível extrair o nome do arquivo/diretório do caminho fornecido.".red());
+            eprintln!(
+                "{}",
+                "✖ Não foi possível extrair o nome do arquivo/diretório do caminho fornecido."
+                    .red()
+            );
             return None;
         }
     };
 
     for entry in entries.flatten() {
         let entry_path = entry.path();
-        
+
         // Filtro robusto por tipo (diretório ou arquivo)
-        if is_dir && !entry_path.is_dir() { continue; }
-        if !is_dir && !entry_path.is_file() { continue; }
+        if is_dir && !entry_path.is_dir() {
+            continue;
+        }
+        if !is_dir && !entry_path.is_file() {
+            continue;
+        }
 
         if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
             let dist = levenshtein_distance(target_name, name);
@@ -94,16 +121,24 @@ pub fn get_valid_path(input: &str, is_dir: bool) -> Option<PathBuf> {
         let prompt = format!("Você quis dizer '{}'?", sug.display());
         let options = vec!["Sim", "Não"];
         let ans = Select::new(&prompt, options).prompt().ok()?;
-        
+
         if ans == "Sim" {
             return Some(sug.clone());
         }
     } else {
         // Se houver várias, deixar escolher interativamente
-        let mut options: Vec<String> = suggestions.iter().map(|p| p.display().to_string()).collect();
+        let mut options: Vec<String> = suggestions
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect();
         options.push("Nenhum destes".to_string());
-        
-        let ans = Select::new("Vários caminhos parecidos encontrados. Escolha um:", options).prompt().ok()?;
+
+        let ans = Select::new(
+            "Vários caminhos parecidos encontrados. Escolha um:",
+            options,
+        )
+        .prompt()
+        .ok()?;
         if ans != "Nenhum destes" {
             return Some(PathBuf::from(ans));
         }
@@ -122,13 +157,19 @@ pub fn ensure_path(provided: Option<&&str>, prompt: &str, is_dir: bool) -> Optio
     }
 
     if std::env::args().len() > 1 {
-        eprintln!("{}", format!("✖ Erro: Caminho não fornecido ou inválido (Modo CLI).").red());
+        eprintln!(
+            "{}",
+            format!("✖ Erro: Caminho não fornecido ou inválido (Modo CLI).").red()
+        );
         return None;
     }
 
     // Se não foi fornecido ou o fornecido era inválido, tentar o rfd
     println!("{}", format!("➜ {}", prompt).cyan());
-    println!("{}", "(Abrindo janela de seleção... caso não abra, digite o caminho abaixo)".dimmed());
+    println!(
+        "{}",
+        "(Abrindo janela de seleção... caso não abra, digite o caminho abaixo)".dimmed()
+    );
 
     let picked = if is_dir {
         rfd::FileDialog::new().pick_folder()
@@ -147,7 +188,9 @@ pub fn ensure_path(provided: Option<&&str>, prompt: &str, is_dir: bool) -> Optio
         Err(_) => return None, // Usuário cancelou ou erro no prompt
     };
 
-    if input.trim().is_empty() { return None; }
-    
+    if input.trim().is_empty() {
+        return None;
+    }
+
     get_valid_path(&input, is_dir)
 }

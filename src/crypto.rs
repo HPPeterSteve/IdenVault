@@ -3,10 +3,10 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use argon2::{
-    Argon2,
     password_hash::{PasswordHasher, SaltString},
+    Argon2,
 };
-use rand::{RngCore, rngs::OsRng as RandOsRng};
+use rand::{rngs::OsRng as RandOsRng, RngCore};
 use std::{fs, path::Path};
 
 const SALT_LEN: usize = 16;
@@ -17,13 +17,15 @@ fn derive_key_from_password(password: &str, salt: &[u8]) -> [u8; 32] {
     let salt = SaltString::encode_b64(salt).unwrap();
 
     let hash = argon2.hash_password(password.as_bytes(), &salt).unwrap();
-    let hash_str = hash.hash.unwrap();        // guarda o temporário
-    let hash_bytes = hash_str.as_bytes();     // pega os bytes seguros
+    let hash_str = hash.hash.unwrap(); // guarda o temporário
+    let hash_bytes = hash_str.as_bytes(); // pega os bytes seguros
 
     let mut key = [0u8; 32];
     key.copy_from_slice(&hash_bytes[..32]);
     key
 }
+
+// https://docs.rs/argon2/latest/argon2/
 
 /// Criptografa um arquivo usando AES-256-GCM + Argon2
 pub fn encrypt_file(path: &Path, password: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -36,7 +38,8 @@ pub fn encrypt_file(path: &Path, password: &str) -> Result<(), Box<dyn std::erro
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|_| "Chave inválida")?;
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
 
-    let encrypted = cipher.encrypt(&nonce, data.as_ref())
+    let encrypted = cipher
+        .encrypt(&nonce, data.as_ref())
         .map_err(|e| format!("Erro na criptografia: {}", e))?;
 
     let mut final_data = Vec::new();
@@ -65,7 +68,8 @@ pub fn decrypt_file(path: &Path, password: &str) -> Result<(), Box<dyn std::erro
     let key_bytes = derive_key_from_password(password, salt);
     let cipher = Aes256Gcm::new_from_slice(&key_bytes).map_err(|_| "Chave inválida")?;
 
-    let decrypted = cipher.decrypt(nonce, ciphertext)
+    let decrypted = cipher
+        .decrypt(nonce, ciphertext)
         .map_err(|e| format!("Erro na descriptografia: {}", e))?;
 
     let new_path = path.with_extension("dec");
@@ -76,7 +80,10 @@ pub fn decrypt_file(path: &Path, password: &str) -> Result<(), Box<dyn std::erro
 }
 
 /// Deriva a chave mestre combinando senha + USB key
-pub fn derive_master_key(password: &str, usb_key_bytes: &[u8]) -> Result<[u8; 32], Box<dyn std::error::Error>> {
+pub fn derive_master_key(
+    password: &str,
+    usb_key_bytes: &[u8],
+) -> Result<[u8; 32], Box<dyn std::error::Error>> {
     let mut combined = Vec::new();
     combined.extend_from_slice(password.as_bytes());
     combined.extend_from_slice(usb_key_bytes);
@@ -87,7 +94,7 @@ pub fn derive_master_key(password: &str, usb_key_bytes: &[u8]) -> Result<[u8; 32
     let argon2 = Argon2::default();
     let hash = argon2.hash_password(&combined, &salt).unwrap();
 
-    let hash_str = hash.hash.unwrap();    // mantém o temporário vivo
+    let hash_str = hash.hash.unwrap(); // mantém o temporário vivo
     let hash_bytes = hash_str.as_bytes();
 
     let mut master_key = [0u8; 32];

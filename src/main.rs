@@ -25,17 +25,17 @@
  */
 
 mod cli;
-mod vault;
 mod crypto;
 mod log;
+mod manual;
 mod path_assistant;
 mod sys_info;
-mod manual;
+mod vault;
 
 use colored::*;
 use inquire::{Password, Select};
-use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 
@@ -138,7 +138,7 @@ fn interactive_menu() -> Option<String> {
         "Descriptografar Cofre",
         "Mudar Senha",
         "Deletar Cofre",
-        "Sair"
+        "Sair",
     ];
 
     let choice = Select::new("Selecione uma ação:", options).prompt();
@@ -203,7 +203,10 @@ fn parse_id(s: Option<&&str>, cmd: &str) -> Option<u32> {
         Some(v) => match v.parse::<u32>() {
             Ok(id) => Some(id),
             Err(_) => {
-                eprintln!("{}", format!("✖ '{}': ID deve ser numérico, recebeu '{}'", cmd, v).red());
+                eprintln!(
+                    "{}",
+                    format!("✖ '{}': ID deve ser numérico, recebeu '{}'", cmd, v).red()
+                );
                 None
             }
         },
@@ -223,19 +226,23 @@ fn prompt_password(label: &str) -> String {
 
 fn prompt_password_opt(label: &str) -> Option<String> {
     let p = prompt_password(label);
-    if p.is_empty() { None } else { Some(p) }
+    if p.is_empty() {
+        None
+    } else {
+        Some(p)
+    }
 }
 
-/* 
+/*
  *  DISPATCHER DE COMANDOS
  *  */
 fn handle_command(parts: Vec<&str>) {
     match parts[0] {
-
         /* ── originais ────────────────────────────────────────────────── */
-
         "isolate-directory" => {
-            if let Some(dir) = path_assistant::ensure_path(parts.get(1), "Diretório para isolar:", true) {
+            if let Some(dir) =
+                path_assistant::ensure_path(parts.get(1), "Diretório para isolar:", true)
+            {
                 log::info(&format!("Isolando diretório: {:?}", dir));
                 vault::isolate_directory(dir.to_str().unwrap());
             }
@@ -245,7 +252,9 @@ fn handle_command(parts: Vec<&str>) {
             let path = if let Some(p) = parts.get(1) {
                 PathBuf::from(p)
             } else {
-                let input = inquire::Text::new("Caminho para o novo cofre:").prompt().unwrap_or_default();
+                let input = inquire::Text::new("Caminho para o novo cofre:")
+                    .prompt()
+                    .unwrap_or_default();
                 PathBuf::from(input)
             };
 
@@ -278,7 +287,9 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "allow-write" => {
-            if let Some(path) = path_assistant::ensure_path(parts.get(1), "Arquivo para liberar escrita:", false) {
+            if let Some(path) =
+                path_assistant::ensure_path(parts.get(1), "Arquivo para liberar escrita:", false)
+            {
                 log::info(&format!("Liberando escrita: {:?}", path));
                 vault::allow_write(path.to_str().unwrap());
                 println!("{}", "✔ Escrita liberada".green());
@@ -286,7 +297,9 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "read-directory" => {
-            if let Some(dir) = path_assistant::ensure_path(parts.get(1), "Diretório para listar:", true) {
+            if let Some(dir) =
+                path_assistant::ensure_path(parts.get(1), "Diretório para listar:", true)
+            {
                 let dir_str = dir.to_str().unwrap();
                 log::info(&format!("Listando diretório: {}", dir_str));
                 let files = vault::read_directory(dir_str);
@@ -299,7 +312,7 @@ fn handle_command(parts: Vec<&str>) {
 
         "add-file" => {
             let vault_path = path_assistant::ensure_path(parts.get(1), "Caminho do cofre:", true);
-            let file       = path_assistant::ensure_path(parts.get(2), "Arquivo para adicionar:", false);
+            let file = path_assistant::ensure_path(parts.get(2), "Arquivo para adicionar:", false);
 
             if let (Some(v), Some(f)) = (vault_path, file) {
                 log::info(&format!("Adicionando arquivo {:?} ao cofre {:?}", f, v));
@@ -318,7 +331,9 @@ fn handle_command(parts: Vec<&str>) {
             let file = if let Some(f) = parts.get(2) {
                 Some(f.to_string())
             } else {
-                inquire::Text::new("Nome do arquivo no cofre:").prompt().ok()
+                inquire::Text::new("Nome do arquivo no cofre:")
+                    .prompt()
+                    .ok()
             };
 
             if let (Some(v), Some(f)) = (vault_path, file) {
@@ -334,10 +349,12 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "status" => {
-            if let Some(vault_path) = path_assistant::ensure_path(parts.get(1), "Caminho ou ID do cofre:", true) {
+            if let Some(vault_path) =
+                path_assistant::ensure_path(parts.get(1), "Caminho ou ID do cofre:", true)
+            {
                 log::info(&format!("Verificando status do cofre: {:?}", vault_path));
                 match vault::get_vault_status(vault_path.to_str().unwrap()) {
-                    Ok(_)  => (),
+                    Ok(_) => (),
                     Err(e) => {
                         log::error(&format!("Erro em status: {}", e));
                         eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -347,7 +364,9 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "encrypt" => {
-            if let Some(file) = path_assistant::ensure_path(parts.get(1), "Arquivo para criptografar:", false) {
+            if let Some(file) =
+                path_assistant::ensure_path(parts.get(1), "Arquivo para criptografar:", false)
+            {
                 let pass = get_password("Senha:", parts.get(2));
                 if !pass.is_empty() {
                     log::info(&format!("Criptografando arquivo: {:?}", file));
@@ -365,7 +384,9 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "decrypt" => {
-            if let Some(file) = path_assistant::ensure_path(parts.get(1), "Arquivo para descriptografar:", false) {
+            if let Some(file) =
+                path_assistant::ensure_path(parts.get(1), "Arquivo para descriptografar:", false)
+            {
                 let pass = get_password("Senha:", parts.get(2));
                 if !pass.is_empty() {
                     log::info(&format!("Descriptografando arquivo: {:?}", file));
@@ -383,7 +404,7 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "secure-copy" => {
-            let file       = path_assistant::ensure_path(parts.get(1), "Arquivo de origem:", false);
+            let file = path_assistant::ensure_path(parts.get(1), "Arquivo de origem:", false);
             let vault_path = path_assistant::ensure_path(parts.get(2), "Caminho do cofre:", true);
 
             if let (Some(f), Some(v)) = (file, vault_path) {
@@ -399,7 +420,9 @@ fn handle_command(parts: Vec<&str>) {
         }
 
         "run-in-sandbox" => {
-            if let Some(dir) = path_assistant::ensure_path(parts.get(1), "Diretório para sandbox:", true) {
+            if let Some(dir) =
+                path_assistant::ensure_path(parts.get(1), "Diretório para sandbox:", true)
+            {
                 log::info(&format!("Executando sandbox: {:?}", dir));
                 vault::run_in_sandbox(dir.to_str().unwrap());
             }
@@ -407,10 +430,10 @@ fn handle_command(parts: Vec<&str>) {
 
         "system-information" => {
             let options = sys_info::SystemOptions {
-                cpu:       parts.contains(&"cpu"),
-                memory:    parts.contains(&"memory"),
-                disks:     parts.contains(&"disks"),
-                networks:  parts.contains(&"networks"),
+                cpu: parts.contains(&"cpu"),
+                memory: parts.contains(&"memory"),
+                disks: parts.contains(&"disks"),
+                networks: parts.contains(&"networks"),
                 processes: parts.contains(&"processes"),
             };
             sys_info::system_information(options);
@@ -418,18 +441,22 @@ fn handle_command(parts: Vec<&str>) {
 
         "list-process-status" => {
             let options = sys_info::SystemOptions {
-                cpu:       false,
-                memory:    false,
-                disks:     false,
-                networks:  false,
+                cpu: false,
+                memory: false,
+                disks: false,
+                networks: false,
                 processes: true,
             };
             sys_info::list_process_status(&options);
         }
 
         "derive-master-key" => {
-            let password = inquire::Password::new("Senha:").prompt().unwrap_or_default();
-            let usb_key_input = inquire::Text::new("Chave USB (hex):").prompt().unwrap_or_default();
+            let password = inquire::Password::new("Senha:")
+                .prompt()
+                .unwrap_or_default();
+            let usb_key_input = inquire::Text::new("Chave USB (hex):")
+                .prompt()
+                .unwrap_or_default();
             let usb_key_bytes = match hex::decode(usb_key_input.trim()) {
                 Ok(bytes) => bytes,
                 Err(e) => {
@@ -440,14 +467,16 @@ fn handle_command(parts: Vec<&str>) {
             };
 
             match crypto::derive_master_key(&password, &usb_key_bytes) {
-                Ok(master_key) => println!("{}", format!("Master Key derivada: {}", hex::encode(master_key)).green()),
+                Ok(master_key) => println!(
+                    "{}",
+                    format!("Master Key derivada: {}", hex::encode(master_key)).green()
+                ),
                 Err(e) => {
                     log::error(&format!("Erro em derive-master-key: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
                 }
             }
         }
-
 
         "manual" => {
             manual::show_manual();
@@ -480,8 +509,12 @@ fn handle_command(parts: Vec<&str>) {
             let name = if let Some(&s) = parts.get(1) {
                 Some(s)
             } else {
-                let ans = inquire::Text::new("Nome do cofre (Enter para auto-gerar):").prompt().unwrap_or_default();
-                if ans.trim().is_empty() { None } else {
+                let ans = inquire::Text::new("Nome do cofre (Enter para auto-gerar):")
+                    .prompt()
+                    .unwrap_or_default();
+                if ans.trim().is_empty() {
+                    None
+                } else {
                     name_buf = ans.trim().to_string();
                     Some(name_buf.as_str())
                 }
@@ -491,21 +524,40 @@ fn handle_command(parts: Vec<&str>) {
             let path = if let Some(&s) = parts.get(2) {
                 Some(s)
             } else {
-                let ans = Select::new("Onde salvar o cofre?", vec!["Local padrão (Catálogo)", "Escolher pasta..."]).prompt();
+                let ans = Select::new(
+                    "Onde salvar o cofre?",
+                    vec!["Local padrão (Catálogo)", "Escolher pasta..."],
+                )
+                .prompt();
                 if let Ok("Escolher pasta...") = ans {
-                    if let Some(p) = path_assistant::ensure_path(None, "Selecione a pasta de destino", true) {
+                    if let Some(p) =
+                        path_assistant::ensure_path(None, "Selecione a pasta de destino", true)
+                    {
                         path_buf = p.to_string_lossy().to_string();
                         Some(path_buf.as_str())
-                    } else { None }
-                } else { None }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             };
 
             let mut vtype_str = "normal";
             if let Some(&s) = parts.get(3) {
                 vtype_str = s;
             } else {
-                if let Ok(ans) = Select::new("Tipo de cofre:", vec!["normal (sem senha)", "protected (com senha)"]).prompt() {
-                    vtype_str = if ans.starts_with("normal") { "normal" } else { "protected" };
+                if let Ok(ans) = Select::new(
+                    "Tipo de cofre:",
+                    vec!["normal (sem senha)", "protected (com senha)"],
+                )
+                .prompt()
+                {
+                    vtype_str = if ans.starts_with("normal") {
+                        "normal"
+                    } else {
+                        "protected"
+                    };
                 }
             };
 
@@ -528,11 +580,26 @@ fn handle_command(parts: Vec<&str>) {
             /* ── Engine de isolamento ── */
             println!("{}", "\nEscolha o engine de proteção:".cyan());
             println!("{}", "  [0] Sem engine (padrão)".white());
-            println!("{}", "  [1] Engine 1 — 1 camada  + arquivos isca a-z".white());
-            println!("{}", "  [2] Engine 2 — 3 camadas + arquivos isca a-z".white());
-            println!("{}", "  [3] Engine 3 — 6 camadas + arquivos isca a-z".white());
-            println!("{}", "  [4] Engine 4 — 16 camadas + binários falsos .enc".white());
-            println!("{}", "  [5] Engine 5 — 20 camadas + binários falsos .enc".white());
+            println!(
+                "{}",
+                "  [1] Engine 1 — 1 camada  + arquivos isca a-z".white()
+            );
+            println!(
+                "{}",
+                "  [2] Engine 2 — 3 camadas + arquivos isca a-z".white()
+            );
+            println!(
+                "{}",
+                "  [3] Engine 3 — 6 camadas + arquivos isca a-z".white()
+            );
+            println!(
+                "{}",
+                "  [4] Engine 4 — 16 camadas + binários falsos .enc".white()
+            );
+            println!(
+                "{}",
+                "  [5] Engine 5 — 20 camadas + binários falsos .enc".white()
+            );
 
             let engine_level: i32 = inquire::Text::new("Engine [0-5]:")
                 .prompt()
@@ -542,26 +609,34 @@ fn handle_command(parts: Vec<&str>) {
                 .unwrap_or(0)
                 .clamp(0, 5);
 
-            println!("{}", format!("→ Engine {} selecionado.", engine_level).yellow());
+            println!(
+                "{}",
+                format!("→ Engine {} selecionado.", engine_level).yellow()
+            );
 
-            log::info(&format!("vault-create name={:?} path={:?} type={} engine={}",
-                name, path, vtype_str, engine_level));
+            log::info(&format!(
+                "vault-create name={:?} path={:?} type={} engine={}",
+                name, path, vtype_str, engine_level
+            ));
 
             match vault::vault_create(name, vtype_str, path, password.as_deref()) {
-                Ok(_)  => {
+                Ok(_) => {
                     println!("{}", "✔ Cofre criado no core C.".green());
 
                     /* Aplica engine se > 0 */
                     if engine_level > 0 {
                         match vault::vault_apply_engine(name, engine_level) {
-                            Ok(_)  => println!("{}", format!("✔ Engine {} aplicado.", engine_level).green()),
+                            Ok(_) => println!(
+                                "{}",
+                                format!("✔ Engine {} aplicado.", engine_level).green()
+                            ),
                             Err(e) => {
                                 log::error(&format!("vault_apply_engine: {}", e));
                                 eprintln!("{}", format!("⚠ Engine não aplicado: {}", e).yellow());
                             }
                         }
                     }
-                },
+                }
                 Err(e) => {
                     log::error(&format!("vault-create: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -571,12 +646,14 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-delete <id> */
         "vault-delete" => {
-            let Some(id) = parse_id(parts.get(1), "vault-delete") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-delete") else {
+                return;
+            };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-delete id={}", id));
             match vault::vault_delete(id, pass.as_deref()) {
-                Ok(_)  => println!("{}", "✔ Cofre deletado.".green()),
+                Ok(_) => println!("{}", "✔ Cofre deletado.".green()),
                 Err(e) => {
                     log::error(&format!("vault-delete: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -586,7 +663,9 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-rename <id> <new_name> */
         "vault-rename" => {
-            let Some(id) = parse_id(parts.get(1), "vault-rename") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-rename") else {
+                return;
+            };
             let new_name = match parts.get(2) {
                 Some(n) => *n,
                 None => {
@@ -598,7 +677,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-rename id={} new_name={}", id, new_name));
             match vault::vault_rename(id, new_name, pass.as_deref()) {
-                Ok(_)  => println!("{}", "✔ Cofre renomeado.".green()),
+                Ok(_) => println!("{}", "✔ Cofre renomeado.".green()),
                 Err(e) => {
                     log::error(&format!("vault-rename: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -608,7 +687,9 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-unlock <id> */
         "vault-unlock" => {
-            let Some(id) = parse_id(parts.get(1), "vault-unlock") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-unlock") else {
+                return;
+            };
             let pass = prompt_password("Senha:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para desbloquear.".red());
@@ -617,7 +698,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-unlock id={}", id));
             match vault::vault_unlock(id, &pass) {
-                Ok(_)  => println!("{}", "✔ Cofre desbloqueado.".green()),
+                Ok(_) => println!("{}", "✔ Cofre desbloqueado.".green()),
                 Err(e) => {
                     log::error(&format!("vault-unlock: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -630,7 +711,10 @@ fn handle_command(parts: Vec<&str>) {
             let id = if let Some(&s) = parts.get(1) {
                 s.parse::<u32>().ok()
             } else {
-                inquire::Text::new("ID do Cofre:").prompt().ok().and_then(|s| s.parse::<u32>().ok())
+                inquire::Text::new("ID do Cofre:")
+                    .prompt()
+                    .ok()
+                    .and_then(|s| s.parse::<u32>().ok())
             };
 
             let Some(id) = id else {
@@ -665,14 +749,25 @@ fn handle_command(parts: Vec<&str>) {
             available_files.push(">> Todos os arquivos".to_string());
             available_files.push(">> Cancelar".to_string());
 
-            let filename = match inquire::Select::new("Selecione o arquivo para resgatar:", available_files).prompt() {
-                Ok(ans) if ans == ">> Cancelar" => return,
-                Ok(ans) => ans,
-                Err(_) => return,
-            };
+            let filename =
+                match inquire::Select::new("Selecione o arquivo para resgatar:", available_files)
+                    .prompt()
+                {
+                    Ok(ans) if ans == ">> Cancelar" => return,
+                    Ok(ans) => ans,
+                    Err(_) => return,
+                };
 
-            println!("{}", "\n⚠ ADVERTÊNCIA: Os arquivos resgatados ficarão DESPROTEGIDOS no destino!".yellow());
-            let confirm = inquire::Select::new("Você tem certeza disso?", vec!["Sim, resgatar", "Não, cancelar"]).prompt();
+            println!(
+                "{}",
+                "\n⚠ ADVERTÊNCIA: Os arquivos resgatados ficarão DESPROTEGIDOS no destino!"
+                    .yellow()
+            );
+            let confirm = inquire::Select::new(
+                "Você tem certeza disso?",
+                vec!["Sim, resgatar", "Não, cancelar"],
+            )
+            .prompt();
             if let Ok("Não, cancelar") | Err(_) = confirm {
                 println!("{}", "Operação cancelada.".yellow());
                 return;
@@ -682,7 +777,10 @@ fn handle_command(parts: Vec<&str>) {
             let dst_dir = if let Some(p) = rfd::FileDialog::new().pick_folder() {
                 p
             } else {
-                println!("{}", "✖ Nenhuma pasta selecionada. Operação cancelada.".red());
+                println!(
+                    "{}",
+                    "✖ Nenhuma pasta selecionada. Operação cancelada.".red()
+                );
                 return;
             };
 
@@ -698,7 +796,10 @@ fn handle_command(parts: Vec<&str>) {
                 return;
             }
 
-            log::info(&format!("vault-export id={} file={} dest={:?}", id, filename, dst_dir));
+            log::info(&format!(
+                "vault-export id={} file={} dest={:?}",
+                id, filename, dst_dir
+            ));
 
             let files_to_export: Vec<String> = if filename == ">> Todos os arquivos" {
                 let mut all = Vec::new();
@@ -734,9 +835,12 @@ fn handle_command(parts: Vec<&str>) {
 
                 match res {
                     Ok(_) => {
-                        println!("{}", format!("✔ {} resgatado com sucesso para {}", f, dst_str).green());
+                        println!(
+                            "{}",
+                            format!("✔ {} resgatado com sucesso para {}", f, dst_str).green()
+                        );
                         success_count += 1;
-                    },
+                    }
                     Err(e) => {
                         eprintln!("{}", format!("✖ Erro ao resgatar {}: {}", f, e).red());
                         fail_count += 1;
@@ -744,12 +848,21 @@ fn handle_command(parts: Vec<&str>) {
                 }
             }
 
-            println!("{}", format!("\nOperação de resgate concluída! {} sucessos, {} falhas. Obrigado!", success_count, fail_count).bright_green());
+            println!(
+                "{}",
+                format!(
+                    "\nOperação de resgate concluída! {} sucessos, {} falhas. Obrigado!",
+                    success_count, fail_count
+                )
+                .bright_green()
+            );
         }
 
         /* vault-passwd <id> */
         "vault-passwd" => {
-            let Some(id) = parse_id(parts.get(1), "vault-passwd") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-passwd") else {
+                return;
+            };
             let old_pass = prompt_password("Senha atual:");
             let new_pass = prompt_password("Nova senha:");
             let cnf_pass = prompt_password("Confirme nova senha:");
@@ -765,7 +878,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-passwd id={}", id));
             match vault::vault_change_password(id, &old_pass, &new_pass) {
-                Ok(_)  => println!("{}", "✔ Senha alterada.".green()),
+                Ok(_) => println!("{}", "✔ Senha alterada.".green()),
                 Err(e) => {
                     log::error(&format!("vault-passwd: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -775,7 +888,9 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-encrypt <id> */
         "vault-encrypt" => {
-            let Some(id) = parse_id(parts.get(1), "vault-encrypt") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-encrypt") else {
+                return;
+            };
             let pass = prompt_password("Senha do cofre:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para criptografar.".red());
@@ -784,7 +899,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-encrypt id={}", id));
             match vault::vault_encrypt(id, &pass) {
-                Ok(_)  => println!("{}", "✔ Arquivos criptografados (AES-256).".green()),
+                Ok(_) => println!("{}", "✔ Arquivos criptografados (AES-256).".green()),
                 Err(e) => {
                     log::error(&format!("vault-encrypt: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -794,7 +909,9 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-decrypt <id> */
         "vault-decrypt" => {
-            let Some(id) = parse_id(parts.get(1), "vault-decrypt") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-decrypt") else {
+                return;
+            };
             let pass = prompt_password("Senha do cofre:");
             if pass.is_empty() {
                 eprintln!("{}", "✖ Senha obrigatória para descriptografar.".red());
@@ -803,7 +920,7 @@ fn handle_command(parts: Vec<&str>) {
 
             log::info(&format!("vault-decrypt id={}", id));
             match vault::vault_decrypt(id, &pass) {
-                Ok(_)  => println!("{}", "✔ Arquivos descriptografados.".green()),
+                Ok(_) => println!("{}", "✔ Arquivos descriptografados.".green()),
                 Err(e) => {
                     log::error(&format!("vault-decrypt: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -813,10 +930,12 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-scan <id> */
         "vault-scan" => {
-            let Some(id) = parse_id(parts.get(1), "vault-scan") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-scan") else {
+                return;
+            };
             log::info(&format!("vault-scan id={}", id));
             match vault::vault_scan(id) {
-                Ok(_)  => println!("{}", "✔ Varredura concluída.".green()),
+                Ok(_) => println!("{}", "✔ Varredura concluída.".green()),
                 Err(e) => {
                     log::error(&format!("vault-scan: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -826,12 +945,14 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-resolve <id> */
         "vault-resolve" => {
-            let Some(id) = parse_id(parts.get(1), "vault-resolve") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-resolve") else {
+                return;
+            };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-resolve id={}", id));
             match vault::vault_resolve(id, pass.as_deref()) {
-                Ok(_)  => println!("{}", "✔ Alerta resolvido.".green()),
+                Ok(_) => println!("{}", "✔ Alerta resolvido.".green()),
                 Err(e) => {
                     log::error(&format!("vault-resolve: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -841,26 +962,32 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-info <id> */
         "vault-info" => {
-            let Some(id) = parse_id(parts.get(1), "vault-info") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-info") else {
+                return;
+            };
             log::info(&format!("vault-info id={}", id));
             vault::vault_info(id);
         }
 
         /* vault-files <id> */
         "vault-files" => {
-            let Some(id) = parse_id(parts.get(1), "vault-files") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-files") else {
+                return;
+            };
             log::info(&format!("vault-files id={}", id));
             vault::vault_files(id);
         }
 
         /* vault-sandbox <id> */
         "vault-sandbox" => {
-            let Some(id) = parse_id(parts.get(1), "vault-sandbox") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-sandbox") else {
+                return;
+            };
             let pass = prompt_password_opt("Senha (Enter para pular):");
 
             log::info(&format!("vault-sandbox id={}", id));
             match vault::vault_sandbox(id, pass.as_deref()) {
-                Ok(_)  => (),
+                Ok(_) => (),
                 Err(e) => {
                     log::error(&format!("vault-sandbox: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
@@ -870,7 +997,9 @@ fn handle_command(parts: Vec<&str>) {
 
         /* vault-rule <id> <max_fails> [hour_from hour_to] */
         "vault-rule" => {
-            let Some(id) = parse_id(parts.get(1), "vault-rule") else { return };
+            let Some(id) = parse_id(parts.get(1), "vault-rule") else {
+                return;
+            };
             let max_fails: i32 = match parts.get(2) {
                 Some(v) => match v.parse() {
                     Ok(n) => n,
@@ -886,20 +1015,19 @@ fn handle_command(parts: Vec<&str>) {
             };
 
             let hour_from: Option<i32> = parts.get(3).and_then(|v| v.parse().ok());
-            let hour_to:   Option<i32> = parts.get(4).and_then(|v| v.parse().ok());
+            let hour_to: Option<i32> = parts.get(4).and_then(|v| v.parse().ok());
 
             log::info(&format!(
                 "vault-rule id={} max_fails={} hours={:?}-{:?}",
                 id, max_fails, hour_from, hour_to
             ));
             match vault::vault_rule(id, max_fails, hour_from, hour_to) {
-                Ok(_)  => println!("{}", "✔ Regra adicionada.".green()),
+                Ok(_) => println!("{}", "✔ Regra adicionada.".green()),
                 Err(e) => {
                     log::error(&format!("vault-rule: {}", e));
                     eprintln!("{}", format!("✖ Erro: {}", e).red());
                 }
             }
-            
         }
 
         /* ── Novos comandos Linux Context Menu ── */
@@ -919,23 +1047,26 @@ fn handle_command(parts: Vec<&str>) {
 
             let vaults = vault::vault_get_all_paths_pub();
             if !vaults.is_empty() {
-                let options: Vec<String> = vaults.iter().map(|(id, path)| format!("[{}] {}", id, path)).collect();
-                
-                // If CLI args length > 1, maybe we don't want interactive prompt, but we have to pass vault ID somehow. 
-                // Context menus usually pass the vault ID or we select it. 
+                let options: Vec<String> = vaults
+                    .iter()
+                    .map(|(id, path)| format!("[{}] {}", id, path))
+                    .collect();
+
+                // If CLI args length > 1, maybe we don't want interactive prompt, but we have to pass vault ID somehow.
+                // Context menus usually pass the vault ID or we select it.
                 // But the user requested inquire::Select in "add-to-vault", so we keep it.
                 match Select::new("Selecione o cofre de destino:", options).prompt() {
                     Ok(ans) => {
                         let vault_path = ans.split("] ").nth(1).unwrap_or("");
                         let _ = vault::add_file(vault_path, &file_path);
                         println!("{}", "✔ Arquivo adicionado ao cofre.".green());
-                        
+
                         // Only prompt "Enter" if not in CLI? We just keep it simple.
                         if std::env::args().len() == 1 {
                             let _ = inquire::Text::new("Pressione Enter para sair...").prompt();
                         }
-                    },
-                    Err(_) => ()
+                    }
+                    Err(_) => (),
                 }
             } else {
                 eprintln!("{}", "Nenhum cofre disponível.".red());
@@ -944,17 +1075,14 @@ fn handle_command(parts: Vec<&str>) {
                 }
             }
         }
-        
+
         /* ── comando desconhecido — Levenshtein sugere o mais próximo ── */
         unknown => {
             log::warn(&format!("Comando inválido: {}", unknown));
 
             match suggest_command(unknown) {
                 Some(suggestion) => {
-                    println!(
-                        "{}",
-                        format!("✖ Comando '{}' não existe.", unknown).red()
-                    );
+                    println!("{}", format!("✖ Comando '{}' não existe.", unknown).red());
                     println!(
                         "{}",
                         format!("  Você quis dizer '{}'?", suggestion).yellow()
@@ -969,7 +1097,7 @@ fn handle_command(parts: Vec<&str>) {
     }
 }
 
-/* 
+/*
  *  MAIN
  *  */
 fn main() {
@@ -985,8 +1113,11 @@ fn main() {
         Err(e) => {
             eprintln!(
                 "{}",
-                format!("⚠ Falha ao inicializar core C: {} (continuando sem persistência)", e)
-                    .yellow()
+                format!(
+                    "⚠ Falha ao inicializar core C: {} (continuando sem persistência)",
+                    e
+                )
+                .yellow()
             );
         }
     }

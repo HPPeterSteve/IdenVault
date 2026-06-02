@@ -58,21 +58,34 @@ pub fn show_manual() {
         print!("\x1B[2J\x1B[1;1H");
 
         let page = &PAGES[current_page];
-        
-        println!("{}", "===========================================================".cyan());
-        println!("{} {}", "MANUAL DE OPERAÇÃO IDENVAULT -".bold().cyan(), page.title.bold().yellow());
-        println!("{}", "===========================================================".cyan());
+
+        println!(
+            "{}",
+            "===========================================================".cyan()
+        );
+        println!(
+            "{} {}",
+            "MANUAL DE OPERAÇÃO IDENVAULT -".bold().cyan(),
+            page.title.bold().yellow()
+        );
+        println!(
+            "{}",
+            "===========================================================".cyan()
+        );
         println!();
-        
+
         // Print content with word wrap handling implicitly (terminal will wrap)
         println!("{}", page.content.white());
         println!();
-        println!("{}", "===========================================================".cyan());
+        println!(
+            "{}",
+            "===========================================================".cyan()
+        );
         println!("Página {} de {}", current_page + 1, PAGES.len());
         println!();
 
         let mut options = Vec::new();
-        
+
         if current_page < PAGES.len() - 1 {
             options.push("Avançar para a Próxima Página");
         }

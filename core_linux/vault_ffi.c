@@ -85,10 +85,10 @@
 
 int vault_create_ffi(
     const char *name,
-    int         vault_type,
+    int vault_type,
     const char *path,
-    const char *password
-) {
+    const char *password)
+{
     VaultType vt = (vault_type == 1) ? VAULT_TYPE_PROTECTED : VAULT_TYPE_NORMAL;
 
     pthread_mutex_lock(&g_monitor.lock);
@@ -98,31 +98,38 @@ int vault_create_ffi(
     return (int)err;
 }
 
-int vault_delete_ffi(uint32_t id, const char *password) {
+int vault_delete_ffi(uint32_t id, const char *password)
+{
     pthread_mutex_lock(&g_monitor.lock);
     VaultError err = vault_delete(id, password);
     pthread_mutex_unlock(&g_monitor.lock);
     return (int)err;
 }
 
-int vault_rename_ffi(uint32_t id, const char *new_name, const char *password) {
-    if (!new_name || new_name[0] == '\0') return (int)ERR_INVALID_ARGS;
+int vault_rename_ffi(uint32_t id, const char *new_name, const char *password)
+{
+    if (!new_name || new_name[0] == '\0')
+        return (int)ERR_INVALID_ARGS;
     pthread_mutex_lock(&g_monitor.lock);
     VaultError err = vault_rename(id, new_name, password);
     pthread_mutex_unlock(&g_monitor.lock);
     return (int)err;
 }
 
-int vault_unlock_ffi(uint32_t id, const char *password) {
-    if (!password || password[0] == '\0') return (int)ERR_PASS_REQUIRED;
+int vault_unlock_ffi(uint32_t id, const char *password)
+{
+    if (!password || password[0] == '\0')
+        return (int)ERR_PASS_REQUIRED;
     pthread_mutex_lock(&g_monitor.lock);
     VaultError err = vault_unlock(id, password);
     pthread_mutex_unlock(&g_monitor.lock);
     return (int)err;
 }
 
-int vault_change_password_ffi(uint32_t id, const char *old_pass, const char *new_pass) {
-    if (!old_pass || !new_pass) return (int)ERR_INVALID_ARGS;
+int vault_change_password_ffi(uint32_t id, const char *old_pass, const char *new_pass)
+{
+    if (!old_pass || !new_pass)
+        return (int)ERR_INVALID_ARGS;
     pthread_mutex_lock(&g_monitor.lock);
     VaultError err = vault_change_password(id, old_pass, new_pass);
     pthread_mutex_unlock(&g_monitor.lock);
@@ -137,36 +144,43 @@ int vault_change_password_ffi(uint32_t id, const char *old_pass, const char *new
  * a senha via terminal). Aqui recebemos a senha já pronta via parâmetro.
  */
 
-int vault_encrypt_ffi(uint32_t id, const char *password) {
-    if (!password || password[0] == '\0') return (int)ERR_PASS_REQUIRED;
+int vault_encrypt_ffi(uint32_t id, const char *password)
+{
+    if (!password || password[0] == '\0')
+        return (int)ERR_PASS_REQUIRED;
 
     pthread_mutex_lock(&g_monitor.lock);
 
     Vault *v = vault_find_by_id(id);
-    if (!v) {
+    if (!v)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_VAULT_NOT_FOUND;
     }
-    if (!v->has_pass) {
+    if (!v->has_pass)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_PASS_REQUIRED;
     }
 
     VaultError auth_err = auth_verify_password(v, password);
-    if (auth_err != ERR_OK) {
+    if (auth_err != ERR_OK)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)auth_err;
     }
 
     uint8_t key[KEY_LEN];
     VaultError key_err = derive_key(password, v->salt, key);
-    if (key_err != ERR_OK) {
+    if (key_err != ERR_OK)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)key_err;
     }
 
     DIR *dir = opendir(v->path);
-    if (!dir) {
+    if (!dir)
+    {
         explicit_bzero(key, KEY_LEN);
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_IO;
@@ -177,22 +191,29 @@ int vault_encrypt_ffi(uint32_t id, const char *password) {
     char inpath[VAULT_PATH_MAX + NAME_MAX + 2];
     char outpath[VAULT_PATH_MAX + NAME_MAX + 10];
 
-    while ((de = readdir(dir)) != NULL) {
-        if (de->d_name[0] == '.') continue;
+    while ((de = readdir(dir)) != NULL)
+    {
+        if (de->d_name[0] == '.')
+            continue;
         size_t nlen = strlen(de->d_name);
-        if (nlen > 4 && strcmp(de->d_name + nlen - 4, ".enc") == 0) continue;
+        if (nlen > 4 && strcmp(de->d_name + nlen - 4, ".enc") == 0)
+            continue;
 
-        snprintf(inpath,  sizeof(inpath),  "%s/%s",     v->path, de->d_name);
+        snprintf(inpath, sizeof(inpath), "%s/%s", v->path, de->d_name);
         snprintf(outpath, sizeof(outpath), "%s/%s.enc", v->path, de->d_name);
 
         struct stat st;
-        if (stat(inpath, &st) != 0 || !S_ISREG(st.st_mode)) continue;
+        if (stat(inpath, &st) != 0 || !S_ISREG(st.st_mode))
+            continue;
 
-        if (encrypt_file(inpath, outpath, key) == ERR_OK) {
+        if (encrypt_file(inpath, outpath, key) == ERR_OK)
+        {
             unlink(inpath);
             count++;
             vault_log(LOG_AUDIT, "[FFI] vault_encrypt_ffi: encrypted '%s'", de->d_name);
-        } else {
+        }
+        else
+        {
             vault_log(LOG_ERROR, "[FFI] vault_encrypt_ffi: FAILED '%s'", de->d_name);
         }
     }
@@ -204,36 +225,43 @@ int vault_encrypt_ffi(uint32_t id, const char *password) {
     return (int)ERR_OK;
 }
 
-int vault_decrypt_ffi(uint32_t id, const char *password) {
-    if (!password || password[0] == '\0') return (int)ERR_PASS_REQUIRED;
+int vault_decrypt_ffi(uint32_t id, const char *password)
+{
+    if (!password || password[0] == '\0')
+        return (int)ERR_PASS_REQUIRED;
 
     pthread_mutex_lock(&g_monitor.lock);
 
     Vault *v = vault_find_by_id(id);
-    if (!v) {
+    if (!v)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_VAULT_NOT_FOUND;
     }
-    if (!v->has_pass) {
+    if (!v->has_pass)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_PASS_REQUIRED;
     }
 
     VaultError auth_err = auth_verify_password(v, password);
-    if (auth_err != ERR_OK) {
+    if (auth_err != ERR_OK)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)auth_err;
     }
 
     uint8_t key[KEY_LEN];
     VaultError key_err = derive_key(password, v->salt, key);
-    if (key_err != ERR_OK) {
+    if (key_err != ERR_OK)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)key_err;
     }
 
     DIR *dir = opendir(v->path);
-    if (!dir) {
+    if (!dir)
+    {
         explicit_bzero(key, KEY_LEN);
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_IO;
@@ -244,22 +272,28 @@ int vault_decrypt_ffi(uint32_t id, const char *password) {
     char inpath[VAULT_PATH_MAX + NAME_MAX + 2];
     char outpath[VAULT_PATH_MAX + NAME_MAX + 2];
 
-    while ((de = readdir(dir)) != NULL) {
+    while ((de = readdir(dir)) != NULL)
+    {
         size_t nlen = strlen(de->d_name);
-        if (nlen <= 4 || strcmp(de->d_name + nlen - 4, ".enc") != 0) continue;
+        if (nlen <= 4 || strcmp(de->d_name + nlen - 4, ".enc") != 0)
+            continue;
 
-        snprintf(inpath,  sizeof(inpath),  "%s/%s",      v->path, de->d_name);
-        snprintf(outpath, sizeof(outpath), "%s/%.*s",    v->path,
+        snprintf(inpath, sizeof(inpath), "%s/%s", v->path, de->d_name);
+        snprintf(outpath, sizeof(outpath), "%s/%.*s", v->path,
                  (int)(nlen - 4), de->d_name);
 
         struct stat st;
-        if (stat(inpath, &st) != 0 || !S_ISREG(st.st_mode)) continue;
+        if (stat(inpath, &st) != 0 || !S_ISREG(st.st_mode))
+            continue;
 
-        if (decrypt_file(inpath, outpath, key) == ERR_OK) {
+        if (decrypt_file(inpath, outpath, key) == ERR_OK)
+        {
             unlink(inpath);
             count++;
             vault_log(LOG_AUDIT, "[FFI] vault_decrypt_ffi: decrypted '%s'", outpath);
-        } else {
+        }
+        else
+        {
             vault_log(LOG_ERROR, "[FFI] vault_decrypt_ffi: FAILED '%s'", de->d_name);
         }
     }
@@ -273,10 +307,12 @@ int vault_decrypt_ffi(uint32_t id, const char *password) {
 
 /* ── Integridade ────────────────────────────────────────────────────────── */
 
-int vault_scan_ffi(uint32_t id) {
+int vault_scan_ffi(uint32_t id)
+{
     pthread_mutex_lock(&g_monitor.lock);
     Vault *v = vault_find_by_id(id);
-    if (!v) {
+    if (!v)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_VAULT_NOT_FOUND;
     }
@@ -286,7 +322,8 @@ int vault_scan_ffi(uint32_t id) {
     return (int)ERR_OK;
 }
 
-int vault_resolve_ffi(uint32_t id, const char *password) {
+int vault_resolve_ffi(uint32_t id, const char *password)
+{
     pthread_mutex_lock(&g_monitor.lock);
     VaultError err = alert_resolve(id, password);
     pthread_mutex_unlock(&g_monitor.lock);
@@ -295,19 +332,22 @@ int vault_resolve_ffi(uint32_t id, const char *password) {
 
 /* ── Display ────────────────────────────────────────────────────────────── */
 
-void vault_info_ffi(uint32_t id) {
+void vault_info_ffi(uint32_t id)
+{
     pthread_mutex_lock(&g_monitor.lock);
     cmd_info(id);
     pthread_mutex_unlock(&g_monitor.lock);
 }
 
-void vault_list_ffi(void) {
+void vault_list_ffi(void)
+{
     pthread_mutex_lock(&g_monitor.lock);
     cmd_list();
     pthread_mutex_unlock(&g_monitor.lock);
 }
 
-void vault_files_ffi(uint32_t id) {
+void vault_files_ffi(uint32_t id)
+{
     pthread_mutex_lock(&g_monitor.lock);
     cmd_files(id);
     pthread_mutex_unlock(&g_monitor.lock);
@@ -315,10 +355,12 @@ void vault_files_ffi(uint32_t id) {
 
 /* ── Sandbox ────────────────────────────────────────────────────────────── */
 
-int vault_sandbox_ffi(uint32_t id, const char *password) {
+int vault_sandbox_ffi(uint32_t id, const char *password)
+{
     pthread_mutex_lock(&g_monitor.lock);
     Vault *v = vault_find_by_id(id);
-    if (!v) {
+    if (!v)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_VAULT_NOT_FOUND;
     }
@@ -330,18 +372,22 @@ int vault_sandbox_ffi(uint32_t id, const char *password) {
 
 /* ── Rule engine ────────────────────────────────────────────────────────── */
 
-int vault_rule_ffi(uint32_t vault_id, int max_fails, int hour_from, int hour_to) {
-    if (g_rule_count >= MAX_RULES) return (int)ERR_SYSTEM;
+int vault_rule_ffi(uint32_t vault_id, int max_fails, int hour_from, int hour_to)
+{
+    if (g_rule_count >= MAX_RULES)
+        return (int)ERR_SYSTEM;
     rule_add(vault_id, max_fails, hour_from, hour_to);
     return (int)ERR_OK;
 }
 
 /* ── Status ─────────────────────────────────────────────────────────────── */
 
-int vault_get_status_ffi(uint32_t id) {
+int vault_get_status_ffi(uint32_t id)
+{
     pthread_mutex_lock(&g_monitor.lock);
     Vault *v = vault_find_by_id(id);
-    if (!v) {
+    if (!v)
+    {
         pthread_mutex_unlock(&g_monitor.lock);
         return (int)ERR_VAULT_NOT_FOUND;
     }
