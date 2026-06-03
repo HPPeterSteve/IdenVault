@@ -15,7 +15,7 @@ jobs:
       - name: Instala dependências C
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc libssl-dev libseccomp-dev libcap-dev libfuse3-dev
+          sudo apt-get install -y gcc libssl-dev libseccomp-dev libcap-dev libfuse3-dev libgtk-3-dev libwayland-dev libxkbcommon-dev
 
       - name: Instala Rust estável
         uses: dtolnay/rust-toolchain@stable
