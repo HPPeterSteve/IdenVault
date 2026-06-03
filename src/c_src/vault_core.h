@@ -35,12 +35,15 @@ extern "C"
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <sys/fanotify.h>
     /* Per-file leaky bucket for fine-grained throttling */
     typedef struct FileBucket
     {
         char path[VAULT_PATH_MAX];
         double credits;
         time_t last_update;
+        int time_esgoted;
+        int credits_flash;
         struct FileBucket *next;
     } FileBucket;
 #include <sys/inotify.h>
