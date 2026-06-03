@@ -205,6 +205,8 @@ typedef struct {
         VaultStatus status;
         bool has_pass;
         char path[VAULT_PATH_MAX];
+        char cipher_path[VAULT_PATH_MAX];
+        bool is_mounted;
         time_t created_at;
         time_t last_check;
         int failed_attempts;
