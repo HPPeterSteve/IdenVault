@@ -43,7 +43,6 @@ fn main() {
             "-fno-unwind-tables",
             "-fdata-sections",
             "-ffunction-sections",
-            "-fvisibility=hidden",
             "-fmerge-all-constants",
             "-fno-ident",
             "-D_FILE_OFFSET_BITS=64",
