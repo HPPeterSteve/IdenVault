@@ -287,7 +287,7 @@ fn handle_command(parts: Vec<&str>) {
 
             if let (Some(s), Some(d)) = (src, dst) {
                 log::info(&format!("Cópia segura: {:?} -> {:?}", s, d));
-                match vault::safe_copy(s.to_str().unwrap(), d.to_str().unwrap()) {
+                match vault::secure_copy(s.to_str().unwrap(), d.to_str().unwrap()) {
                     Ok(_) => println!("{}", "✔ Arquivo copiado".green()),
                     Err(e) => {
                         log::error(&format!("Erro em safe-copy: {}", e));
