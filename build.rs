@@ -38,7 +38,6 @@ fn main() {
         let mut cmd = C::new("gcc");
         cmd.args([
             "-Oz",
-            "-flto",
             "-fno-asynchronous-unwind-tables",
             "-fno-unwind-tables",
             "-fdata-sections",
