@@ -1,0 +1,143 @@
+[2026-06-18 23:24:50] [INFO] Aplicação iniciada.
+[2026-06-18 23:24:50] [INFO] Core C inicializado: catálogo carregado do disco.
+[2026-06-18 23:24:50] [INFO] Catálogo salvo com sucesso (EOF).
+[2026-06-18 23:24:50] [INFO] EOF detectado.
+[2026-06-18 23:24:50] [INFO] Aplicação iniciada.
+[2026-06-18 23:24:50] [INFO] Core C inicializado: catálogo carregado do disco.
+[2026-06-18 23:24:50] [INFO] Catálogo salvo com sucesso.
+[2026-06-18 23:24:50] [INFO] Aplicação encerrada pelo usuário.
+[2026-06-18 23:25:03] [INFO] Aplicação iniciada.
+[2026-06-18 23:25:03] [INFO] Core C inicializado: catálogo carregado do disco.
+[2026-06-18 23:25:03] [INFO] Catálogo salvo com sucesso (EOF).
+[2026-06-18 23:25:03] [INFO] EOF detectado.
+[2026-06-18 23:25:13] [INFO] Aplicação iniciada.
+[2026-06-18 23:25:13] [INFO] Core C inicializado: catálogo carregado do disco.
+[2026-06-18 23:25:13] [INFO] Catálogo salvo com sucesso (EOF).
+[2026-06-18 23:25:13] [INFO] EOF detectado.
+[2026-06-19 00:11:25] [INFO] Application started.
+[2026-06-19 00:11:25] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:11:25] [WARN] Command inválido: --help
+[2026-06-19 00:13:24] [INFO] Application started.
+[2026-06-19 00:13:24] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:13:47] [INFO] Application started.
+[2026-06-19 00:13:47] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:14:02] [INFO] vault-create name=Some("test_vault") path=Some("/home/pedro/Área de trabalho/IdenVault-main/IdenVault-fixed/temp_vault") type=normal engine=0
+[2026-06-19 00:14:07] [INFO] Application started.
+[2026-06-19 00:14:07] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:14:07] [INFO] [PID 15929 | TID ThreadId(1)] [VAULT_LIST_INIT] Listing vaults from catalog (C core)...
+[2026-06-19 00:14:07] [INFO] [PID 15929 | TID ThreadId(1)] [VAULT_LIST_DONE] Vaults listed in 180.30µs
+[2026-06-19 00:14:12] [INFO] Application started.
+[2026-06-19 00:14:12] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:14:15] [INFO] Application started.
+[2026-06-19 00:14:15] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:14:45] [INFO] Application started.
+[2026-06-19 00:14:45] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:14:45] [INFO] [PID 15962 | TID ThreadId(1)] [SAFE_COPY_INIT] Secure copy: "/home/pedro/Área de trabalho/IdenVault-main/IdenVault-fixed/temp_file.txt" -> "/home/pedro/Área de trabalho/IdenVault-main/IdenVault-fixed/temp_vault/copied_file.txt"
+[2026-06-19 00:14:45] [INFO] [PID 15962 | TID ThreadId(1)] [SECURE_COPY] Evaluating path constraints. Creating temporary bypass path at "/home/pedro/Área de trabalho/IdenVault-main/IdenVault-fixed/temp_vault/copied_file.tmp_copy"
+[2026-06-19 00:14:45] [INFO] [PID 15962 | TID ThreadId(1)] [SECURE_COPY] Streamed 12 bytes via kernel chunk buffers safely.
+[2026-06-19 00:14:45] [INFO] [PID 15962 | TID ThreadId(1)] [SECURE_COPY] Renaming internal temporary copy to override destination file anatomically.
+[2026-06-19 00:14:45] [INFO] [PID 15962 | TID ThreadId(1)] [SAFE_COPY_DONE] File copied securely in 322.20µs. Success rate: 100%.
+[2026-06-19 00:14:54] [INFO] Application started.
+[2026-06-19 00:14:54] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:15:22] [INFO] [PID 15976 | TID ThreadId(1)] [VAULT_DELETE_INIT] Deleting vault id=7
+[2026-06-19 00:15:22] [INFO] [PID 15976 | TID ThreadId(1)] [VAULT_DELETE_DONE] Vault deleted in 1.01ms
+[2026-06-19 00:25:17] [INFO] Application started.
+[2026-06-19 00:25:17] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:25:17] [INFO] [PID 16834 | TID ThreadId(1)] [VAULT_LIST_INIT] Listing vaults from catalog (C core)...
+[2026-06-19 00:25:17] [INFO] [PID 16834 | TID ThreadId(1)] [VAULT_LIST_DONE] Vaults listed in 283.08µs
+[2026-06-19 00:26:10] [INFO] Application started.
+[2026-06-19 00:26:10] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 00:26:10] [INFO] [PID 17356 | TID ThreadId(1)] [SAFE_COPY_INIT] Secure copy: "/tmp/idenvault_test.txt" -> "/home/pedro/.local/share/idenvault/idenvault_2/idenvault_test.txt"
+[2026-06-19 00:26:10] [INFO] [PID 17356 | TID ThreadId(1)] [SECURE_COPY] Path constraints validated. Creating staging temp file at "/home/pedro/.local/share/idenvault/idenvault_2/idenvault_test.tmp_copy"
+[2026-06-19 00:26:10] [INFO] [PID 17356 | TID ThreadId(1)] [SECURE_COPY] Streamed 23 bytes via kernel chunk buffers safely.
+[2026-06-19 00:26:10] [INFO] [PID 17356 | TID ThreadId(1)] [SECURE_COPY] Atomically renaming staging file to final destination path.
+[2026-06-19 00:26:10] [INFO] [PID 17356 | TID ThreadId(1)] [SAFE_COPY_DONE] File copied securely in 2.03ms (23 bytes written).
+[2026-06-19 17:11:35] [INFO] Application started.
+[2026-06-19 17:11:36] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 17:11:36] [WARN] Command inválido: --help
+[2026-06-19 19:00:26] [INFO] Application started.
+[2026-06-19 19:00:26] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 19:00:26] [INFO] [PID 29608 | TID ThreadId(1)] [VAULT_LIST_INIT] Listing vaults from catalog (C core)...
+[2026-06-19 19:00:26] [INFO] [PID 29608 | TID ThreadId(1)] [VAULT_LIST_DONE] Vaults listed in 83.03µs
+[2026-06-19 19:01:54] [INFO] Application started.
+[2026-06-19 19:01:54] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 19:02:39] [INFO] [PID 29943 | TID ThreadId(1)] [VAULT_SANDBOX_INIT] Spawning secure shell session for vault ID 6
+[2026-06-19 19:02:39] [INFO] [PID 29943 | TID ThreadId(1)] [NS_ISOLATION] Detaching mount namespace and locking credentials...
+[2026-06-19 19:02:39] [INFO] [PID 29943 | TID ThreadId(1)] [VAULT_SANDBOX_EXIT] Secure shell session closed after 139.20ms
+[2026-06-19 19:20:56] [INFO] Application started.
+[2026-06-19 19:20:56] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 19:20:56] [INFO] [PID 32105 | TID ThreadId(1)] [VAULT_SANDBOX_INIT] Spawning secure shell session for vault ID 10
+[2026-06-19 19:20:56] [INFO] [PID 32105 | TID ThreadId(1)] [NS_ISOLATION] Detaching mount namespace and locking credentials...
+[2026-06-19 19:20:56] [INFO] [PID 32105 | TID ThreadId(1)] [VAULT_SANDBOX_ERROR] Session aborted after 387.90µs. Reason: Senha obrigatória para cofre protegido
+[2026-06-19 19:21:12] [INFO] Application started.
+[2026-06-19 19:21:12] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 19:21:12] [INFO] [PID 32119 | TID ThreadId(1)] [VAULT_LIST_INIT] Listing vaults from catalog (C core)...
+[2026-06-19 19:21:12] [INFO] [PID 32119 | TID ThreadId(1)] [VAULT_LIST_DONE] Vaults listed in 403.55µs
+[2026-06-19 19:21:24] [INFO] Application started.
+[2026-06-19 19:21:24] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 19:21:24] [INFO] [PID 32136 | TID ThreadId(1)] [VAULT_SANDBOX_INIT] Spawning secure shell session for vault ID 6
+[2026-06-19 19:21:24] [INFO] [PID 32136 | TID ThreadId(1)] [NS_ISOLATION] Detaching mount namespace and locking credentials...
+[2026-06-19 19:21:25] [INFO] [PID 32136 | TID ThreadId(1)] [VAULT_SANDBOX_EXIT] Secure shell session closed after 288.47ms
+[2026-06-19 21:47:57] [INFO] Application started.
+[2026-06-19 21:47:57] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 21:47:57] [INFO] [PID 57414 | TID ThreadId(1)] [VAULT_SANDBOX_INIT] Spawning secure shell session for vault ID 3
+[2026-06-19 21:47:57] [INFO] [PID 57414 | TID ThreadId(1)] [NS_ISOLATION] Detaching mount namespace and locking credentials...
+[2026-06-19 21:47:58] [INFO] [PID 57414 | TID ThreadId(1)] [VAULT_SANDBOX_EXIT] Secure shell session closed after 200.13ms
+[2026-06-19 22:07:30] [INFO] Application started.
+[2026-06-19 22:07:30] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:07:30] [INFO] vault-create name=Some("mysecretvault") path=Some("PROTECTED") type=normal engine=0
+[2026-06-19 22:07:30] [ERROR] vault-create: Caminho inválido
+[2026-06-19 22:09:11] [INFO] Application started.
+[2026-06-19 22:09:11] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:10:05] [INFO] Application started.
+[2026-06-19 22:10:05] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:10:28] [INFO] Application started.
+[2026-06-19 22:10:28] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:10:38] [INFO] Application started.
+[2026-06-19 22:10:38] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:10:38] [INFO] [PID 59302 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 10 via FUSE
+[2026-06-19 22:10:39] [INFO] [PID 59302 | TID ThreadId(1)] [MOUNT_FUSE_ERROR] Error mounting vault after 320.31ms: Erro de I/O
+[2026-06-19 22:16:14] [INFO] Application started.
+[2026-06-19 22:16:14] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:16:14] [INFO] [PID 59666 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 10 via FUSE
+[2026-06-19 22:16:14] [INFO] [PID 59666 | TID ThreadId(1)] [MOUNT_FUSE_ERROR] Error mounting vault after 915.40ms: Erro de I/O
+[2026-06-19 22:31:20] [INFO] Application started.
+[2026-06-19 22:31:20] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-19 22:31:20] [INFO] [PID 60546 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 10 via FUSE
+[2026-06-19 22:31:20] [INFO] [PID 60546 | TID ThreadId(1)] [MOUNT_FUSE_DONE] Vault mounted successfully in 569.63ms
+[2026-06-21 06:30:05] [INFO] Application started.
+[2026-06-21 06:30:05] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-21 06:30:05] [INFO] vault-create name=Some("test_vault") path=Some("/tmp/idenvault_test/vault_dir") type=normal engine=0
+[2026-06-21 06:30:05] [INFO] Application started.
+[2026-06-21 06:30:05] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-21 06:30:05] [INFO] [PID 154329 | TID ThreadId(1)] [VAULT_LIST_INIT] Listing vaults from catalog (C core)...
+[2026-06-21 06:30:05] [INFO] [PID 154329 | TID ThreadId(1)] [VAULT_LIST_DONE] Vaults listed in 104.26µs
+[2026-06-21 06:30:05] [INFO] Application started.
+[2026-06-21 06:30:05] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-21 06:30:05] [INFO] [PID 154332 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 13 via FUSE
+[2026-06-21 06:30:05] [INFO] [PID 154332 | TID ThreadId(1)] [MOUNT_FUSE_DONE] Vault mounted successfully in 6.84ms
+[2026-06-21 07:04:24] [INFO] Application started.
+[2026-06-21 07:04:24] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:39:21] [INFO] Application started.
+[2026-06-23 05:39:21] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:39:21] [WARN] Command inválido: --help
+[2026-06-23 05:39:38] [INFO] Application started.
+[2026-06-23 05:39:38] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:39:52] [INFO] Application started.
+[2026-06-23 05:39:52] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:39:53] [INFO] Application started.
+[2026-06-23 05:39:53] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:39:54] [INFO] Application started.
+[2026-06-23 05:39:54] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:40:18] [INFO] Application started.
+[2026-06-23 05:40:18] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:41:01] [INFO] new name=Some("desktop_vault") path=Some("/tmp/desktop_vault") type=normal engine=0
+[2026-06-23 05:41:12] [INFO] Application started.
+[2026-06-23 05:41:12] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:41:34] [INFO] [PID 42446 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 1 via FUSE
+[2026-06-23 05:41:34] [INFO] [PID 42446 | TID ThreadId(1)] [MOUNT_FUSE_DONE] Vault mounted successfully in 7.62ms
+[2026-06-23 05:42:38] [INFO] Application started.
+[2026-06-23 05:42:38] [INFO] C Core initialized: catalog loaded from disk.
+[2026-06-23 05:46:39] [INFO] [PID 42511 | TID ThreadId(1)] [MOUNT_FUSE_INIT] Mounting vault 1 via FUSE
+[2026-06-23 05:46:39] [INFO] [PID 42511 | TID ThreadId(1)] [MOUNT_FUSE_DONE] Vault mounted successfully in 3.01ms
+[2026-06-23 05:53:52] [ERROR] Read error: Io(Os { code: 5, kind: Uncategorized, message: "Input/output error" })
